@@ -99,9 +99,18 @@ namespace LSystem
                     // left Context를 위한 context-load
                     #region
                     string leftContext = stack.String();
-                    MChar temp = stack.Pop();
-                    MChar leftChar = (stack.Count==0)? MChar.Null: stack.Peek();
-                    stack.Push(temp);
+                    
+                    MChar leftChar;                    
+                    if (stack.Count == 0)
+                    {
+                        leftChar = MChar.Null;
+                    }
+                    else
+                    {
+                        MChar temp = stack.Pop();
+                        leftChar = (stack.Count == 0) ? MChar.Null : stack.Peek();
+                        stack.Push(temp);
+                    }
                     #endregion
 
                     // (2) 키에 맞는 Productions 규칙마다 순회한다.

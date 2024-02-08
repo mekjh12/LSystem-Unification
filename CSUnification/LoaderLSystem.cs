@@ -6,6 +6,273 @@ namespace LSystem
 {
     class LoaderLSystem
     {
+        public static (RawModel3d, RawModel3d) Load3dLeaf(MString word, GlobalParam g)
+        {
+            List<float> list = new List<float>();
+            List<float> branchList3D = new List<float>();
+
+            // 문자열을 순회하면서 경로를 만든다.
+            Stack<Pose> stack = new Stack<Pose>();
+            Pose pose = new Pose(Quaternion.Identity, Vertex3f.Zero);
+            Stack<float> thickStack = new Stack<float>();
+
+            // context-sensitive를 위한 설정
+            Stack<string> contextStack = new Stack<string>();
+            string branchContext = "";
+
+            int idx = 0;
+            float thick = 1.0f;
+
+            List<float> triangles = new List<float>();
+
+            // 한 글자마다 탐색함.
+            while (idx < word.Length)
+            {
+                if (word.Length == 0) break;
+                MChar c = word[idx];
+                Matrix4x4f matQuaternion = (Matrix4x4f)pose.Quaternion;
+                Vertex3f forward = matQuaternion.ForwardVector();
+                Vertex3f up = matQuaternion.UpVector();
+                Vertex3f left = matQuaternion.LeftVector();
+
+                if (c.Alphabet == "G")
+                {
+                    float r = c[0];
+                    Vertex3f start = pose.Postiton;
+                    Vertex3f end = start + forward * r;
+                    branchContext += c.Alphabet;
+                    pose.Postiton = end;
+                }
+                else if (c.Alphabet == "+")
+                {
+                    float angle = c[0];
+                    pose.Quaternion = up.Rotate(angle).Concatenate(pose.Quaternion);
+                }
+                else if (c.Alphabet == "-")
+                {
+                    float angle = c[0];
+                    pose.Quaternion = up.Rotate(-angle).Concatenate(pose.Quaternion);
+                }
+                else if (c.Alphabet == "&")
+                {
+                    float angle = c[0];
+                    pose.Quaternion = left.Rotate(angle).Concatenate(pose.Quaternion);
+                }
+                else if (c.Alphabet == "^")
+                {
+                    float angle = c[0];
+                    pose.Quaternion = left.Rotate(-angle).Concatenate(pose.Quaternion);
+                }
+                else if (c.Alphabet == "\\")
+                {
+                    float angle = c[0];
+                    pose.Quaternion = forward.Rotate(angle).Concatenate(pose.Quaternion);
+                }
+                else if (c.Alphabet == "/")
+                {
+                    float angle = c[0];
+                    pose.Quaternion = forward.Rotate(-angle).Concatenate(pose.Quaternion);
+                }
+                else if (c.Alphabet == "[")
+                {
+                    stack.Push(pose);
+                    thickStack.Push(thick);
+                    contextStack.Push(branchContext);
+                    branchContext = "";
+                }
+                else if (c.Alphabet == "{")
+                {
+                    triangles.Clear();
+                }
+                else if (c.Alphabet == "}")
+                {
+                    branchList3D.AddRange(triangles);
+                }
+                else if (c.Alphabet == ".")
+                {
+                    triangles.Add(pose.Postiton.x);
+                    triangles.Add(pose.Postiton.y);
+                    triangles.Add(pose.Postiton.z);
+                }
+                else if (c.Alphabet == "]")
+                {
+                    pose = stack.Pop();
+                    thick = thickStack.Pop();
+                    branchContext = contextStack.Pop();
+                }
+
+                idx++;
+            }
+
+            // raw3d 모델을 만든다.
+            uint vao = Gl.GenVertexArray();
+            Gl.BindVertexArray(vao);
+            uint vbo = StoreDataInAttributeList(0, 3, branchList3D.ToArray());
+            Gl.BindVertexArray(0);
+            RawModel3d rawModel = new RawModel3d(vao, branchList3D.ToArray());
+
+            return (rawModel, null);
+        }
+
+
+        public static (RawModel3d, RawModel3d) Load3dCrocuses(MString word, GlobalParam g)
+        {
+            List<float> list = new List<float>();
+            List<float> branchList3D = new List<float>();
+
+            // 문자열을 순회하면서 경로를 만든다.
+            Stack<Pose> stack = new Stack<Pose>();
+            Pose pose = new Pose(Quaternion.Identity, Vertex3f.Zero);
+            Stack<float> thickStack = new Stack<float>();
+
+            // 줄기의 밑둥의 큰 원이다.
+            Vertex3f[] baseVertor = null;
+            Stack<Vertex3f[]> branchBaseStack = new Stack<Vertex3f[]>();
+
+            // context-sensitive를 위한 설정
+            Stack<string> contextStack = new Stack<string>();
+            string branchContext = "";
+
+            int idx = 0;
+            float thick = 1.0f;
+
+            // 한 글자마다 탐색함.
+            while (idx < word.Length)
+            {
+                if (word.Length == 0) break;
+                MChar c = word[idx];
+                Matrix4x4f matQuaternion = (Matrix4x4f)pose.Quaternion;
+                Vertex3f forward = matQuaternion.ForwardVector();
+                Vertex3f up = matQuaternion.UpVector();
+                Vertex3f left = matQuaternion.LeftVector();
+
+                if (baseVertor == null)
+                {
+                    baseVertor = new Vertex3f[16];
+                    float radius = 0.01f * thick;
+                    float unitTheta = 360 / baseVertor.Length;
+                    for (int i = 0; i < baseVertor.Length; i++)
+                    {
+                        baseVertor[i] = new Vertex3f((float)(radius * Math.Cos((unitTheta * i).ToRadian())),
+                            (float)(radius * Math.Sin((unitTheta * i).ToRadian())), 0);
+                    }
+                }
+
+                if (c.Alphabet == "F")
+                {
+                    float r = c[0];
+                    Vertex3f start = pose.Postiton;
+                    Vertex3f end = start + forward * r;
+                    branchContext += c.Alphabet;
+
+                    list.Add(start.x);
+                    list.Add(start.y);
+                    list.Add(start.z);
+                    list.Add(end.x);
+                    list.Add(end.y);
+                    list.Add(end.z);
+
+                    (float[] res, Vertex3f[] rot) = LoadBranch(baseVertor, start, end, 0.01f * thick, false);
+                    branchList3D.AddRange(res);
+                    baseVertor = rot;
+
+                    pose.Postiton = end;
+
+                }
+                else if (c.Alphabet == "f")
+                {
+                    float r = c[0];
+                    Vertex3f start = pose.Postiton;
+                    Vertex3f end = start + forward * r;
+                    branchContext += c.Alphabet;
+
+                    list.Add(start.x);
+                    list.Add(start.y);
+                    list.Add(start.z);
+                    list.Add(end.x);
+                    list.Add(end.y);
+                    list.Add(end.z);
+
+                    pose.Postiton = end;
+                }
+                else if (c.Alphabet == "+")
+                {
+                    float angle = c[0];
+                    pose.Quaternion = up.Rotate(angle).Concatenate(pose.Quaternion);
+                }
+                else if (c.Alphabet == "-")
+                {
+                    float angle = c[0];
+                    pose.Quaternion = up.Rotate(-angle).Concatenate(pose.Quaternion);
+                }
+                else if (c.Alphabet == "&")
+                {
+                    float angle = c[0];
+                    pose.Quaternion = left.Rotate(angle).Concatenate(pose.Quaternion);
+                }
+                else if (c.Alphabet == "^")
+                {
+                    float angle = c[0];
+                    pose.Quaternion = left.Rotate(-angle).Concatenate(pose.Quaternion);
+                }
+                else if (c.Alphabet == "\\")
+                {
+                    float angle = c[0];
+                    pose.Quaternion = forward.Rotate(angle).Concatenate(pose.Quaternion);
+                }
+                else if (c.Alphabet == "/")
+                {
+                    float angle = c[0];
+                    pose.Quaternion = forward.Rotate(-angle).Concatenate(pose.Quaternion);
+                }
+                else if (c.Alphabet == "$")
+                {
+                    Vertex3f V = Vertex3f.UnitZ;
+                    Matrix4x4f mat = ((Matrix4x4f)pose.Quaternion);
+                    Vertex3f H = mat.ForwardVector().Normalized;
+                    Vertex3f L = V.Cross(H).Normalized;
+                    Vertex3f U = H.Cross(L).Normalized;
+                    pose.Quaternion = Matrix3x3f.Identity.ToQuaternionFromTNB(H, L, U);
+                }
+                else if (c.Alphabet == "!")
+                {
+                    thick = c[0];
+                }
+                else if (c.Alphabet == "[")
+                {
+                    stack.Push(pose);
+                    branchBaseStack.Push(baseVertor);
+                    thickStack.Push(thick);
+                    contextStack.Push(branchContext);
+                    branchContext = "";
+                }
+                else if (c.Alphabet == "]")
+                {
+                    pose = stack.Pop();
+                    baseVertor = branchBaseStack.Pop();
+                    thick = thickStack.Pop();
+                    branchContext = contextStack.Pop();
+                }
+
+                idx++;
+            }
+
+            // raw3d 모델을 만든다.
+            uint vao = Gl.GenVertexArray();
+            Gl.BindVertexArray(vao);
+            uint vbo = StoreDataInAttributeList(0, 3, branchList3D.ToArray());
+            Gl.BindVertexArray(0);
+            RawModel3d rawModel = new RawModel3d(vao, branchList3D.ToArray());
+
+            vao = Gl.GenVertexArray();
+            Gl.BindVertexArray(vao);
+            vbo = StoreDataInAttributeList(0, 3, list.ToArray());
+            Gl.BindVertexArray(0);
+            RawModel3d rawModelLeaf = new RawModel3d(vao, list.ToArray());
+
+            return (rawModel, rawModelLeaf);
+        }
+
         public static RawModel3d Load3dByAonoKunii(MString word, GlobalParam g)
         {
             List<float> list = new List<float>();
@@ -36,6 +303,18 @@ namespace LSystem
                 Vertex3f forward = matQuaternion.ForwardVector();
                 Vertex3f up = matQuaternion.UpVector();
                 Vertex3f left = matQuaternion.LeftVector();
+
+                if (baseVertor == null)
+                {
+                    baseVertor = new Vertex3f[16];
+                    float radius = 0.01f * thick;
+                    float unitTheta = 360 / baseVertor.Length;
+                    for (int i = 0; i < baseVertor.Length; i++)
+                    {
+                        baseVertor[i] = new Vertex3f((float)(radius * Math.Cos((unitTheta * i).ToRadian())),
+                            (float)(radius * Math.Sin((unitTheta * i).ToRadian())), 0);
+                    }
+                }
 
                 if (c.Alphabet == "F")
                 {
@@ -126,18 +405,6 @@ namespace LSystem
                 else if (c.Alphabet == "!")
                 {
                     thick = c[0];
-
-                    if (baseVertor == null)
-                    {
-                        baseVertor = new Vertex3f[16];
-                        float radius = 0.01f * thick;
-                        float unitTheta = 360 / baseVertor.Length;
-                        for (int i = 0; i < baseVertor.Length; i++)
-                        {
-                            baseVertor[i] = new Vertex3f((float)(radius * Math.Cos((unitTheta * i).ToRadian())),
-                                (float)(radius * Math.Sin((unitTheta * i).ToRadian())), 0);
-                        }
-                    }
                 }
                 else if (c.Alphabet == "[")
                 {

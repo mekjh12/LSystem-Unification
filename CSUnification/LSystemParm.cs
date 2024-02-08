@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 
 namespace LSystem
@@ -88,9 +89,16 @@ namespace LSystem
 
         public static MChar A => new MChar("A");
 
+        public static MChar B => new MChar("B");
+
+        public static MChar C => new MChar("C");
+
+        public static MChar F(float value) => new MChar("F", value);
+
+        public static MChar X => new MChar("X");
+
         public static MChar a => new MChar("a");
 
-        public static MChar B => new MChar("B");
 
         public static MChar b => new MChar("b");
 
@@ -202,18 +210,61 @@ namespace LSystem
 
         public object Current => _chars[position];
 
-        public static MString String(string txt, bool isSpaceSplitMode = false)
+        /// <summary>
+        /// * [, ] 괄호는 양옆으로 띄워쓰기 필요없음 <br/>
+        /// 
+        /// </summary>
+        /// <param name="txt"></param>
+        /// <param name="SplitMode"></param>
+        /// <returns></returns>
+        public static MString String(string txt, char? SplitMode = null)
         {
-            if (isSpaceSplitMode)
+            if (SplitMode != null)
             {
                 MString str = MString.Null;
-                string[] items = txt.Split(' ');
+
+                txt = txt.Replace("[", " [ ");
+                txt = txt.Replace("]", " ] ");
+                string[] items = txt.Split((char)SplitMode);
+
                 for (int i = 0; i < items.Length; i++)
                 {
-                    string chr = items[i];
-                    if (chr == "[") str += MChar.Open;
-                    else if (chr == "]") str += MChar.Close;
-                    else str += MChar.Char(chr);
+                    string chr = items[i].Trim();
+                    if (chr == "[") 
+                    {
+                        str += MChar.Open;
+                        continue;
+                    }
+                    else if (chr == "]") 
+                    { 
+                        str += MChar.Close;
+                        continue;
+                    }
+
+                    int a = chr.IndexOf("(");
+                    if (a >= 0)
+                    {
+                        int b = chr.IndexOf(")");
+                        if (a < b)
+                        {
+                            string alphabet = chr.Substring(0, a);
+                            string[] cols = chr.Substring(a + 1, b - a - 1).Split(',');
+                            float[] vals = new float[cols.Length];
+                            for (int j = 0; j < cols.Length; j++)
+                            {
+                                vals[j] = float.Parse(cols[j].Trim());
+                            }
+                            str += MChar.Char(alphabet, vals);
+                        }
+                        else
+                        {
+                            new Exception("sentence lsystem 구문 오류입니다.");
+                        }
+                    }
+                    else
+                    {
+                        str += MChar.Char(chr);
+                    }
                 }
                 return str;
             }
@@ -223,6 +274,7 @@ namespace LSystem
                 for (int i = 0; i < txt.Length; i++)
                 {
                     char chr = txt[i];
+                    if (chr == ' ') continue;
                     if (chr == '[') str += MChar.Open;
                     else if (chr == ']') str += MChar.Close;
                     else str += MChar.Char(chr.ToString());
