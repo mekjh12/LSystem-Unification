@@ -1,3 +1,11 @@
+# LSystem-ContextSensitive
+
+LSystem을 위한 통합 버전
+* Basic LSystem
+* Stochastic Basic LSystem
+* Context-sensitive Basic LSystem
+
+
 # Developmental surface models (p.123)
 ```c#
  LSystemUnif lSystem = new LSystemUnif(_rnd);
@@ -41,12 +49,6 @@
 ```
 ![image](https://github.com/mekjh12/LSystem-Unification/assets/122244587/a37f9334-9501-46e7-a0b5-76fd34958464)
 
-# LSystem-ContextSensitive
-
-LSystem을 위한 통합 버전
-* Basic LSystem
-* Stochastic Basic LSystem
-* Context-sensitive Basic LSystem
 
 ```c#
 GlobalParam globalParam = new GlobalParam();
