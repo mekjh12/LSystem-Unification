@@ -8,8 +8,28 @@ LSystem을 위한 통합 버전
 
 # Developmental surface models (p.123)
 ```c#
- ![image](https://github.com/mekjh12/LSystem-Unification/assets/122244587/ce021221-12d3-40fd-a640-02243159e087)
+ LSystemUnif lSystem = new LSystemUnif(_rnd);
+ GlobalParam globalParam = new GlobalParam();
+ float delta = globalParam.Add("delta", 5);
+ float d = globalParam.Add("d", 1);
 
+ MString axiom = (MString)"[A][B]";                
+
+ lSystem.AddRule(ProductionNumber.P1, "A", varCount: 0, g: globalParam,
+     condition: (t, p, n) => true,
+     func: (MChar c, MChar p, MChar n, GlobalParam g) => (MString)"[+A{.].C.}");
+
+ lSystem.AddRule(ProductionNumber.P2, "B", varCount: 0, g: globalParam,
+     condition: (t, p, n) => true,
+     func: (MChar c, MChar p, MChar n, GlobalParam g) => (MString)"[-B{.].C.}");
+
+ lSystem.AddRule(ProductionNumber.P2, "C", varCount: 0, g: globalParam,
+     condition: (t, p, n) => true,
+     func: (MChar c, MChar p, MChar n, GlobalParam g) => (MString)"G(0.5)C");
+
+ Console.WriteLine("axiom=" + axiom);
+ MString sentence = lSystem.Generate(axiom, 20);
+ Console.WriteLine("result=" + sentence);
 ```
 ![image](https://github.com/mekjh12/LSystem-Unification/assets/122244587/a37f9334-9501-46e7-a0b5-76fd34958464)
 
