@@ -7,6 +7,8 @@ LSystem을 위한 통합 버전
 
 
 # Developmental surface models (p.123)
+
+현재부터 MString생성을 string으로 생성 후 explicit cast.
 ```c#
  LSystemUnif lSystem = new LSystemUnif(_rnd);
  GlobalParam globalParam = new GlobalParam();
