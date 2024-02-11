@@ -4,6 +4,15 @@ using System.Collections.Generic;
 
 namespace LSystem
 {
+    public enum ProductionNumber
+    {
+        P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, 
+        P11, P12, P13, P14, P15, P16, P17, P18, P19, P20, 
+        P21, P22, P23, P24, P25, P26, P27, P28, P29, P30, 
+        P31, P32, P33, P34, P35, P36, P37, P38, P39, P40, 
+        P41, P42, P43, P44, P45, P46, P47, P48, P49, P50,
+    }
+
     public delegate bool Condition(MChar mchar, MChar pchar, MChar nchar);
 
     public delegate MString MultiVariableFunc(MChar mchar, MChar pchar, MChar nchar, GlobalParam g);
@@ -82,63 +91,7 @@ namespace LSystem
 
         public static MChar Char(string alphabet, params float[] values) => new MChar(alphabet, values);
 
-        #region 문자 단축 클래스화
-        public static MChar Empty => new MChar("");
-
         public static MChar Null => new MChar("null");
-
-        public static MChar A => new MChar("A");
-
-        public static MChar B => new MChar("B");
-
-        public static MChar C => new MChar("C");
-
-        public static MChar F(float value) => new MChar("F", value);
-
-        public static MChar X => new MChar("X");
-
-        public static MChar a => new MChar("a");
-
-
-        public static MChar b => new MChar("b");
-
-        public static MChar c => new MChar("c");
-
-        public static MChar d => new MChar("d");
-
-        public static MChar e => new MChar("e");
-
-        public static MChar f => new MChar("f");
-
-        public static MChar g => new MChar("g");
-
-        public static MChar h => new MChar("h");
-
-        public static MChar i => new MChar("i");
-
-        public static MChar I => new MChar("I");
-
-        public static MChar K => new MChar("K");
-
-        public static MChar L => new MChar("L");
-
-        public static MChar Plus => new MChar("+");
-
-        public static MChar Minus => new MChar("-");
-
-        public static MChar Open => new MChar("[");
-
-        public static MChar Close => new MChar("]");
-
-        public static MChar PitUp => new MChar("^");
-
-        public static MChar PitDown => new MChar("&");
-
-        public static MChar RollLeft => new MChar("\\");
-
-        public static MChar RollRight => new MChar("/");
-
-        #endregion
 
         public MChar(string alphabet, int varCount)
         {
@@ -188,12 +141,19 @@ namespace LSystem
             return a.Alphabet == b.Alphabet;
         }
 
+        public override bool Equals(Object o)
+        {
+            return this.Alphabet == ((MChar)o).Alphabet;
+        }
+
         public MString ToMString()=> new MString(new MChar[] { this });
     }
 
 
     public class MString: IEnumerator, IEnumerable
     {
+        public static float Delta = 22.5f;
+
         MChar[] _chars;
         int position = -1;
 
@@ -208,80 +168,7 @@ namespace LSystem
             _chars = mchar;
         }
 
-        public object Current => _chars[position];
-
-        /// <summary>
-        /// * [, ] 괄호는 양옆으로 띄워쓰기 필요없음 <br/>
-        /// 
-        /// </summary>
-        /// <param name="txt"></param>
-        /// <param name="SplitMode"></param>
-        /// <returns></returns>
-        public static MString String(string txt, char? SplitMode = null)
-        {
-            if (SplitMode != null)
-            {
-                MString str = MString.Null;
-
-                txt = txt.Replace("[", " [ ");
-                txt = txt.Replace("]", " ] ");
-                string[] items = txt.Split((char)SplitMode);
-
-                for (int i = 0; i < items.Length; i++)
-                {
-                    string chr = items[i].Trim();
-                    if (chr == "[") 
-                    {
-                        str += MChar.Open;
-                        continue;
-                    }
-                    else if (chr == "]") 
-                    { 
-                        str += MChar.Close;
-                        continue;
-                    }
-
-                    int a = chr.IndexOf("(");
-                    if (a >= 0)
-                    {
-                        int b = chr.IndexOf(")");
-                        if (a < b)
-                        {
-                            string alphabet = chr.Substring(0, a);
-                            string[] cols = chr.Substring(a + 1, b - a - 1).Split(',');
-                            float[] vals = new float[cols.Length];
-                            for (int j = 0; j < cols.Length; j++)
-                            {
-                                vals[j] = float.Parse(cols[j].Trim());
-                            }
-                            str += MChar.Char(alphabet, vals);
-                        }
-                        else
-                        {
-                            new Exception("sentence lsystem 구문 오류입니다.");
-                        }
-                    }
-                    else
-                    {
-                        str += MChar.Char(chr);
-                    }
-                }
-                return str;
-            }
-            else
-            {
-                MString str = MString.Null;
-                for (int i = 0; i < txt.Length; i++)
-                {
-                    char chr = txt[i];
-                    if (chr == ' ') continue;
-                    if (chr == '[') str += MChar.Open;
-                    else if (chr == ']') str += MChar.Close;
-                    else str += MChar.Char(chr.ToString());
-                }
-                return str;
-            }
-        }
+        public object Current => _chars[position];        
 
         public override string ToString()
         {
@@ -305,6 +192,46 @@ namespace LSystem
                 }
             }
             return txt;
+        }
+
+        public static explicit operator MString(string txt)
+        {
+            txt = txt.Replace(" ", ""); // 공백을 제거한다.
+
+            MString str = MString.Null;
+            for (int i = 0; i < txt.Length; i++)
+            {
+                char chr = txt[i];
+                if (i + 1 < txt.Length)
+                {
+                    if (txt[i + 1] == '(')
+                    {
+                        int j = txt.IndexOf(")", i + 1);
+                        if (i < j)
+                        {
+                            string[] cols = txt.Substring(i + 2, j - i - 2).Split(',');
+                            float[] pars = new float[cols.Length];
+                            for (int k = 0; k < pars.Length; k++) pars[k] = float.Parse(cols[k].Trim());
+                            str += MChar.Char(chr.ToString(), pars);
+                            i = j;
+                            continue;
+                        }
+                        else
+                        {
+                            new Exception("구문 오류[괄호()]입니다.");
+                        }
+                    }
+                    else
+                    {
+                        str += MChar.Char(chr.ToString());
+                    }
+                }
+                else
+                {
+                    str += MChar.Char(chr.ToString());
+                }
+            }
+            return str;
         }
 
         public IEnumerator GetEnumerator()
@@ -339,6 +266,16 @@ namespace LSystem
             List<MChar> list = new List<MChar>();
             list.AddRange(a._chars);
             list.Add(b);
+            mString._chars = list.ToArray();
+            return mString;
+        }
+
+        public static MString operator +(MChar b, MString a)
+        {
+            MString mString = new MString();
+            List<MChar> list = new List<MChar>();
+            list.Add(b);
+            list.AddRange(a._chars);
             mString._chars = list.ToArray();
             return mString;
         }

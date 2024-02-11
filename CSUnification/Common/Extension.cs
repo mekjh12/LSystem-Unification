@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace LSystem
@@ -274,5 +275,61 @@ namespace LSystem
             }
             return txt;
         }
+
+        public static bool IsAlphaBet(this char c) => Regex.IsMatch(c.ToString(), "[a-z]", RegexOptions.IgnoreCase);
+
+        public static bool IsNumberic(this char c) => Char.IsNumber(c);
+
+        public static MString ToMString(this string txt, params string[] structures)
+        {
+            txt = txt.Replace(" ", "");
+
+            if (structures == null)
+                structures = new string[] { "+,+(90)", "-,-(90)", "^,^(90)", "&,&(90)", "\\,\\(90)", "/,/(90)", };
+
+            foreach (string item in structures)
+            {
+                string[] cols = item.Split(',');
+                if (cols.Length == 2)
+                    txt = txt.Replace(cols[0].Trim(), cols[1].Trim());
+            }
+
+
+            MString str = MString.Null;
+            for (int i = 0; i < txt.Length; i++)
+            {
+                char chr = txt[i];
+                if (i + 1 < txt.Length)
+                {
+                    if (txt[i + 1] == '(')
+                    {
+                        int j = txt.IndexOf(")", i + 1);
+                        if (i < j)
+                        {
+                            string[] cols = txt.Substring(i + 2, j - i - 2).Split(',');
+                            float[] pars = new float[cols.Length];
+                            for (int k = 0; k < pars.Length; k++) pars[k] = float.Parse(cols[k].Trim());
+                            str += MChar.Char(chr.ToString(), pars);
+                            i = j;
+                            continue;
+                        }
+                        else
+                        {
+                            new Exception("구문 오류[괄호()]입니다.");
+                        }
+                    }
+                    else
+                    {
+                        str += MChar.Char(chr.ToString());
+                    }
+                }
+                else
+                {
+                    str += MChar.Char(chr.ToString());
+                }
+            }
+            return str;
+        }
+
     }
 }

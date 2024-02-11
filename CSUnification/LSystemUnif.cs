@@ -5,7 +5,7 @@ namespace LSystem
 {
     public class LSystemUnif
     {
-        Dictionary<string, List<Production>> _productions;
+        Dictionary<ProductionNumber, List<Production>> _productions;
         Random _rnd;
 
         public LSystemUnif(Random random)
@@ -13,7 +13,7 @@ namespace LSystem
             _rnd = random;
         }
 
-        public void AddRule(string key, string alphabet, int varCount, string leftContext, int leftVarCount,
+        public void AddRule(ProductionNumber key, string alphabet, int varCount, string leftContext, int leftVarCount,
             GlobalParam g,
             Condition condition, MultiVariableFunc func, float probability = 1.0f)
         {
@@ -24,7 +24,7 @@ namespace LSystem
             AddRule(key, production);
         }
 
-        public void AddRule(string key, string alphabet, int varCount, GlobalParam g,
+        public void AddRule(ProductionNumber key, string alphabet, int varCount, GlobalParam g,
             Condition condition,  MultiVariableFunc func, float probability = 1.0f)
         {
             MChar predecessor = new MChar(alphabet, varCount);
@@ -32,10 +32,10 @@ namespace LSystem
             AddRule(key, production);
         }
 
-        public void AddRule(string key, Production production)
+        public void AddRule(ProductionNumber key, Production production)
         {
             // p1: A(x,y) : y<3 => A(2x, x+y)
-            if (_productions == null) _productions = new Dictionary<string, List<Production>>();
+            if (_productions == null) _productions = new Dictionary<ProductionNumber, List<Production>>();
 
             if (_productions.ContainsKey(key))
             {
@@ -114,7 +114,7 @@ namespace LSystem
                     #endregion
 
                     // (2) 키에 맞는 Productions 규칙마다 순회한다.
-                    foreach (KeyValuePair<string, List<Production>> items in _productions)
+                    foreach (KeyValuePair<ProductionNumber, List<Production>> items in _productions)
                     {
                         // 조건에 맞는 Production 만 선별한다.
                         List<Production> satisfiedProd = new List<Production>();
@@ -186,7 +186,7 @@ namespace LSystem
                 }
 
                 mString = newString;
-                Console.WriteLine($"{i+1} = {newString}");
+                //Console.WriteLine($"{i+1} = {newString}");
                 oldString = newString;
             }
 

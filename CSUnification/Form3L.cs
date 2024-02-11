@@ -2,7 +2,9 @@
 using System;
 using System.Collections.Generic;
 using System.Net.Http.Headers;
+using System.Text.RegularExpressions;
 using System.Windows.Forms;
+using LSystem;
 
 namespace LSystem
 {
@@ -154,41 +156,25 @@ namespace LSystem
 
                 LSystemUnif lSystem = new LSystemUnif(_rnd);
                 GlobalParam globalParam = new GlobalParam();
-                float delta = globalParam.Add("delta", 10);
+                MString.Delta = globalParam.Add("delta", 10);
                 float d = globalParam.Add("d", 1);
 
-                MChar G = MChar.Char("G", d);
-                MChar A = MChar.A;
-                MChar B = MChar.B;
-                MChar C = MChar.C;
-                MChar plus = MChar.Char("+", delta);
-                MChar minus = MChar.Char("-", delta);
-                MChar open = MChar.Char("{");
-                MChar close = MChar.Char("}");
-                MChar dot = MChar.Char(".");
+                MString axiom = (MString)"[A][B]";                
 
-                MString axiom = MChar.Open + A + MChar.Close + MChar.Open + B + MChar.Close;
-
-                lSystem.AddRule("p1", "A", varCount: 0, g: globalParam,
+                lSystem.AddRule(ProductionNumber.P1, "A", varCount: 0, g: globalParam,
                     condition: (t, p, n) => true,
-                    func: (MChar c, MChar p, MChar n, GlobalParam g)
-                        => MChar.Open + plus + A + open + dot + MChar.Close + dot + C + dot + close
-                        );
+                    func: (MChar c, MChar p, MChar n, GlobalParam g) => (MString)"[+A{.].C.}");
 
-                lSystem.AddRule("p2", "B", varCount: 0, g: globalParam,
+                lSystem.AddRule(ProductionNumber.P2, "B", varCount: 0, g: globalParam,
                     condition: (t, p, n) => true,
-                    func: (MChar c, MChar p, MChar n, GlobalParam g)
-                        => MChar.Open + minus + B + open + dot + MChar.Close + dot + C + dot + close
-                        );
+                    func: (MChar c, MChar p, MChar n, GlobalParam g) => (MString)"[-B{.].C.}");
 
-                lSystem.AddRule("p3", "C", varCount: 0, g: globalParam,
+                lSystem.AddRule(ProductionNumber.P2, "C", varCount: 0, g: globalParam,
                     condition: (t, p, n) => true,
-                    func: (MChar c, MChar p, MChar n, GlobalParam g)
-                        => G + C
-                        );
+                    func: (MChar c, MChar p, MChar n, GlobalParam g) => (MString)"G(0.5)C");
 
                 Console.WriteLine("axiom=" + axiom);
-                MString sentence = lSystem.Generate(axiom, 18);
+                MString sentence = lSystem.Generate(axiom, 20);
                 Console.WriteLine("result=" + sentence);
                 
                 (RawModel3d branch, _) = LoaderLSystem.Load3dLeaf(sentence, globalParam);

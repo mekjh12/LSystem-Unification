@@ -37,7 +37,7 @@ namespace LSystem
 
                 if (c.Alphabet == "G")
                 {
-                    float r = c[0];
+                    float r = c.Length == 1 ? c[0] : 0.5f;
                     Vertex3f start = pose.Postiton;
                     Vertex3f end = start + forward * r;
                     branchContext += c.Alphabet;
@@ -45,32 +45,32 @@ namespace LSystem
                 }
                 else if (c.Alphabet == "+")
                 {
-                    float angle = c[0];
+                    float angle = c.Length == 1 ? c[0] : 22.5f;
                     pose.Quaternion = up.Rotate(angle).Concatenate(pose.Quaternion);
                 }
                 else if (c.Alphabet == "-")
                 {
-                    float angle = c[0];
+                    float angle = c.Length == 1 ? c[0] : 22.5f;
                     pose.Quaternion = up.Rotate(-angle).Concatenate(pose.Quaternion);
                 }
                 else if (c.Alphabet == "&")
                 {
-                    float angle = c[0];
+                    float angle = c.Length == 1 ? c[0] : 22.5f;
                     pose.Quaternion = left.Rotate(angle).Concatenate(pose.Quaternion);
                 }
                 else if (c.Alphabet == "^")
                 {
-                    float angle = c[0];
+                    float angle = c.Length == 1 ? c[0] : 22.5f;
                     pose.Quaternion = left.Rotate(-angle).Concatenate(pose.Quaternion);
                 }
                 else if (c.Alphabet == "\\")
                 {
-                    float angle = c[0];
+                    float angle = c.Length == 1 ? c[0] : 22.5f;
                     pose.Quaternion = forward.Rotate(angle).Concatenate(pose.Quaternion);
                 }
                 else if (c.Alphabet == "/")
                 {
-                    float angle = c[0];
+                    float angle = c.Length == 1 ? c[0] : 22.5f;
                     pose.Quaternion = forward.Rotate(-angle).Concatenate(pose.Quaternion);
                 }
                 else if (c.Alphabet == "[")
