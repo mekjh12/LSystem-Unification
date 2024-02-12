@@ -83,6 +83,35 @@ Console.WriteLine("axiom=" + axiom);
 MString sentence = lSystem.Generate(axiom, 8);
 Console.WriteLine(sentence);
 ```
+
+## A Family of simple leaves generated using a parametric L-system.
+```c#
+LSystemUnif lSystem = new LSystemUnif(_rnd);
+GlobalParam globalParam = new GlobalParam();
+float delta = globalParam.Add("delta", 60);
+float d = globalParam.Add("d", 1);
+float LA = globalParam.Add("LA", 5);
+float RA = globalParam.Add("RA", 1);
+float LB = globalParam.Add("LB", 0.6f);
+float RB = globalParam.Add("RB", 1.06f);
+float PD = globalParam.Add("PD", 0.25f);
+
+MString axiom = (MString)"{.A(0)}";
+lSystem.AddRule(ProductionNumber.P1, "A", varCount: 1, g: globalParam,
+    condition: (t, p, n) => true,
+    func: (MChar t, MChar p, MChar n, GlobalParam g) => (MString)$"G({LA},{RA})[-B({t[0]}).][A({t[0] + 1})][+B({t[0]}).]");
+
+lSystem.AddRule(ProductionNumber.P2, "B", varCount: 1, g: globalParam,
+    condition: (t, p, n) => t[0] > 0,
+    func: (MChar t, MChar p, MChar n, GlobalParam g) => (MString)$"G({LB},{RB})B({t[0] - PD})");
+
+lSystem.AddRule(ProductionNumber.P3, "G", varCount: 2, g: globalParam,
+    condition: (t, p, n) => true,
+    func: (MChar t, MChar p, MChar n, GlobalParam g) => (MString)$"G({t[0] * t[1]},{t[1]})");
+```
+![image](https://github.com/mekjh12/LSystem-Unification/assets/122244587/b5f0652b-30e4-445b-8c42-d3e8e01a61c9)
+
+
 ```js
 axiom=D(1)a(1)
 0=D(2)a(2)
