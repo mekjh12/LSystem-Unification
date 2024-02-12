@@ -1,4 +1,5 @@
-﻿using System;
+﻿using OpenGL;
+using System;
 using System.Collections.Generic;
 
 namespace LSystem
@@ -6,11 +7,26 @@ namespace LSystem
     public class LSystemUnif
     {
         Dictionary<ProductionNumber, List<Production>> _productions;
-        Random _rnd;
+        static Random _rnd;
+
+        public static Vertex3f RandomColor3 => new Vertex3f((float)_rnd.NextDouble(), (float)_rnd.NextDouble(), (float)_rnd.NextDouble());
 
         public LSystemUnif(Random random)
         {
             _rnd = random;
+        }
+
+        public void PrintRules()
+        {
+            foreach (KeyValuePair<ProductionNumber, List<Production>> item in _productions)
+            {
+                ProductionNumber productionNumber = item.Key;
+                Console.WriteLine($"*ProductionNumber{productionNumber}");
+                foreach (Production prod in item.Value)
+                {
+
+                }
+            }
         }
 
         public void AddRule(ProductionNumber key, string alphabet, int varCount, string leftContext, int leftVarCount,
@@ -55,11 +71,11 @@ namespace LSystem
         /// <param name="axiom"></param>
         /// <param name="num"></param>
         /// <returns></returns>
-        public MString Generate(MString axiom, int num)
+        public MString Generate(MString axiom, int n)
         {
             MString mString = axiom;
 
-            for (int i = 0; i < num; i++)
+            for (int i = 0; i < n; i++)
             {
                 MString oldString = mString;
 
@@ -116,8 +132,9 @@ namespace LSystem
                     // (2) 키에 맞는 Productions 규칙마다 순회한다.
                     foreach (KeyValuePair<ProductionNumber, List<Production>> items in _productions)
                     {
-                        // 조건에 맞는 Production 만 선별한다.
                         List<Production> satisfiedProd = new List<Production>();
+
+                        // 조건에 맞는 Production 만 선별한다.
                         foreach (Production prod in items.Value) // 만족하는 Production을 모은다.
                         {
                             MChar mchar = prod.Predecessor;
@@ -132,7 +149,7 @@ namespace LSystem
                                     satisfiedProd.Add(prod);
                                 }
                             }
-                            // left context가 있으면,
+                            // left context가 있으면, 문자만 일치하면 된다.
                             else
                             {
                                 if (prod.Left.Alphabet == leftChar.Alphabet)
@@ -186,7 +203,7 @@ namespace LSystem
                 }
 
                 mString = newString;
-                //Console.WriteLine($"{i+1} = {newString}");
+                Console.WriteLine($"{i+1} = {newString}");
                 oldString = newString;
             }
 

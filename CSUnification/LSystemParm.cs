@@ -32,6 +32,11 @@ namespace LSystem
             return value;
         }
 
+        public bool ContainsKey(string key)
+        {
+            return _value.ContainsKey(key);
+        }
+
         public float this[string key] => _value[key];
         
     }
@@ -109,6 +114,11 @@ namespace LSystem
             _parametric = param;
         }
 
+        /// <summary>
+        /// 알파벳과 매개변수의 갯수가 동시에 일치하면 서로 같다고 판별한다.
+        /// </summary>
+        /// <param name="mchar"></param>
+        /// <returns></returns>
         public bool IsSameNumOfInParameter(MChar mchar)
         {
             return _alphabet == mchar.Alphabet && Length == mchar.Length;
@@ -152,8 +162,6 @@ namespace LSystem
 
     public class MString: IEnumerator, IEnumerable
     {
-        public static float Delta = 22.5f;
-
         MChar[] _chars;
         int position = -1;
 

@@ -5,6 +5,9 @@ using System.Net.Http.Headers;
 using System.Text.RegularExpressions;
 using System.Windows.Forms;
 using LSystem;
+using System.Drawing;
+using System.Drawing.Imaging;
+using System.Windows.Media.Media3D;
 
 namespace LSystem
 {
@@ -148,6 +151,20 @@ namespace LSystem
                 _polygonMode = (_polygonMode == PolygonMode.Fill) ?
                     PolygonMode.Line : PolygonMode.Fill;
             }
+            else if (e.KeyCode == Keys.P)
+            {
+                int width = this.glControl1.Width;
+                int height = this.glControl1.Height;
+                Bitmap bitmap = new Bitmap(width, height);
+                BitmapData bData = bitmap.LockBits(new Rectangle(0, 0, bitmap.Width, bitmap.Height),
+                    ImageLockMode.WriteOnly, System.Drawing.Imaging.PixelFormat.Format24bppRgb);
+                Gl.ReadPixels(0, 0, width, height, OpenGL.PixelFormat.Bgr, PixelType.UnsignedByte, bData.Scan0);
+                bitmap.UnlockBits(bData);
+                bitmap.RotateFlip(RotateFlipType.RotateNoneFlipY);
+                Gl.Finish();
+                Clipboard.SetImage(bitmap);
+                MessageBox.Show("화면을 캡처하였습니다.");
+            }
             else if (e.KeyCode == Keys.D1)
             {
                 Entity ent = (entities.Count > 0) ? entities[0] : null;
@@ -155,33 +172,36 @@ namespace LSystem
                 entities.Add(ent);
 
                 LSystemUnif lSystem = new LSystemUnif(_rnd);
+
                 GlobalParam globalParam = new GlobalParam();
-                MString.Delta = globalParam.Add("delta", 10);
+                float delta = globalParam.Add("delta", 5);
                 float d = globalParam.Add("d", 1);
 
-                MString axiom = (MString)"[A][B]";                
+                MString axiom = (MString)"G(18)  [X(36)A]/(-72)[X(36)B]  [X(36)A]/(-72)[X(36)B]  [X(36)A]/(-72)[X(36)B]  [X(36)A]/(-72)[X(36)B]  [X(36)A]/(-72)[X(36)B] ";
 
                 lSystem.AddRule(ProductionNumber.P1, "A", varCount: 0, g: globalParam,
                     condition: (t, p, n) => true,
-                    func: (MChar c, MChar p, MChar n, GlobalParam g) => (MString)"[+A{.].C.}");
+                    func: (MChar t, MChar p, MChar n, GlobalParam g) => (MString)$"[&G(1)A{{.].");
 
                 lSystem.AddRule(ProductionNumber.P2, "B", varCount: 0, g: globalParam,
                     condition: (t, p, n) => true,
-                    func: (MChar c, MChar p, MChar n, GlobalParam g) => (MString)"[-B{.].C.}");
+                    func: (MChar t, MChar p, MChar n, GlobalParam g) => (MString)$"B&.G(1).}}");
 
-                lSystem.AddRule(ProductionNumber.P2, "C", varCount: 0, g: globalParam,
+                lSystem.AddRule(ProductionNumber.P3, "X", varCount: 1, g: globalParam,
                     condition: (t, p, n) => true,
-                    func: (MChar c, MChar p, MChar n, GlobalParam g) => (MString)"G(0.5)C");
+                    func: (MChar t, MChar p, MChar n, GlobalParam g) => (MString)$"X({t[0] + 4.5f})");
 
                 Console.WriteLine("axiom=" + axiom);
-                MString sentence = lSystem.Generate(axiom, 20);
+                MString sentence = lSystem.Generate(axiom, n: 14);
                 Console.WriteLine("result=" + sentence);
-                
-                (RawModel3d branch, _) = LoaderLSystem.Load3dLeaf(sentence, globalParam);
+
+                (RawModel3d branch, RawModel3d stem) = LoaderLSystem.Load3dRoseLeaf(sentence, globalParam, Vertex3f.One);
 
                 Entity e1 = new Entity(branch, PrimitiveType.Triangles);
                 entities.Add(e1);
 
+                Entity e2 = new Entity(stem, PrimitiveType.Lines);
+                entities.Add(e2);
             }
         }
     }

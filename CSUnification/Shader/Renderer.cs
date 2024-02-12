@@ -39,14 +39,8 @@ namespace LSystem
             shader.LoadViewMatrix(camera.ViewMatrix);
             shader.LoadModelMatrix(entity.ModelMatrix);
 
-            if (entity.PrimitiveType == PrimitiveType.Lines)
-            {
-                Gl.LineWidth(entity.LineWidth);
-            }
-            else
-            {
-                Gl.LineWidth(1.0f);
-            }
+            float lineWidth = (entity.PrimitiveType == PrimitiveType.Lines)?entity.LineWidth: 1.0f;
+            Gl.LineWidth(lineWidth);
 
             Gl.DrawArrays(entity.PrimitiveType, 0, entity.Model.VertexCount);
 
