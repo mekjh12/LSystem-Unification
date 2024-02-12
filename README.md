@@ -44,35 +44,43 @@ globalParam.Add("u", 1);
 
 lSystem.AddRule("a", varCount: 1, g: globalParam,
     condition: (t, p, n) => t[0] < globalParam["m"], 
-    func: (MChar c, MChar p, MChar n, GlobalParam g) => MChar.Char("a", c[0] + 1).ToMString());
+    func: (MChar c, MChar p, MChar n, GlobalParam g)
+     => MChar.Char("a", c[0] + 1).ToMString());
 
 lSystem.AddRule("a", varCount: 1, g: globalParam,
     condition: (t, p, n) => t[0] == globalParam["m"],
-    func: (MChar c, MChar p, MChar n, GlobalParam g) => MChar.Char("I") + MChar.Open + MChar.Char("L") + MChar.Close + MChar.Char("a", 1));
+    func: (MChar c, MChar p, MChar n, GlobalParam g)
+     => MChar.Char("I") + MChar.Open + MChar.Char("L") + MChar.Close + MChar.Char("a", 1));
 
 lSystem.AddRule("D", varCount: 1, g: globalParam,
     condition: (t, p, n) => t[0] < globalParam["d"],
-    func: (MChar c, MChar p, MChar n, GlobalParam g) => MChar.Char("D", c[0] + 1).ToMString());
+    func: (MChar c, MChar p, MChar n, GlobalParam g)
+     => MChar.Char("D", c[0] + 1).ToMString());
 
 lSystem.AddRule("D", varCount: 1, g: globalParam,
     condition: (t, p, n) => t[0] == globalParam["d"],
-    func: (MChar c, MChar p, MChar n, GlobalParam g) => MChar.Char("S", 1).ToMString());
+    func: (MChar c, MChar p, MChar n, GlobalParam g)
+     => MChar.Char("S", 1).ToMString());
 
 lSystem.AddRule("S", varCount: 1, g: globalParam,
     condition: (t, p, n) => t[0] < globalParam["u"],
-    func: (MChar c, MChar p, MChar n, GlobalParam g) => MChar.Char("S", c[0] + 1).ToMString());
+    func: (MChar c, MChar p, MChar n, GlobalParam g)
+     => MChar.Char("S", c[0] + 1).ToMString());
 
 lSystem.AddRule("S", varCount: 1, g: globalParam,
     condition: (t, p, n) => t[0] == globalParam["u"],
-    func: (MChar c, MChar p, MChar n, GlobalParam g) => MChar.Empty.ToMString());
+    func: (MChar c, MChar p, MChar n, GlobalParam g)
+     => MChar.Empty.ToMString());
 
 lSystem.AddRule("I", varCount: 0, leftContext:"S", 1, g: globalParam,
     condition: (t, p, n) => p[0] == globalParam["u"],
-    func: (MChar c, MChar p, MChar n, GlobalParam g) => MChar.Char("I") + MChar.Char("S", 1));
+    func: (MChar c, MChar p, MChar n, GlobalParam g)
+     => MChar.Char("I") + MChar.Char("S", 1));
 
 lSystem.AddRule("a", varCount: 1, leftContext: "S", 1, g: globalParam,
     condition: (t, p, n) => true,
-    func: (MChar c, MChar p, MChar n, GlobalParam g) => MChar.I + MChar.Open + MChar.L + MChar.Close + MChar.A);
+    func: (MChar c, MChar p, MChar n, GlobalParam g)
+     => MChar.I + MChar.Open + MChar.L + MChar.Close + MChar.A);
 
 lSystem.AddRule("A", varCount: 0, g: globalParam,
     condition: (t, p, n) => true,
@@ -84,7 +92,7 @@ MString sentence = lSystem.Generate(axiom, 8);
 Console.WriteLine(sentence);
 ```
 
-## A Family of simple leaves generated using a parametric L-system.
+## A Family of simple leaves generated using a parametric L-system. p.124
 ```c#
 LSystemUnif lSystem = new LSystemUnif(_rnd);
 GlobalParam globalParam = new GlobalParam();
@@ -99,7 +107,8 @@ float PD = globalParam.Add("PD", 0.25f);
 MString axiom = (MString)"{.A(0)}";
 lSystem.AddRule(ProductionNumber.P1, "A", varCount: 1, g: globalParam,
     condition: (t, p, n) => true,
-    func: (MChar t, MChar p, MChar n, GlobalParam g) => (MString)$"G({LA},{RA})[-B({t[0]}).][A({t[0] + 1})][+B({t[0]}).]");
+    func: (MChar t, MChar p, MChar n, GlobalParam g)
+    => (MString)$"G({LA},{RA})[-B({t[0]}).][A({t[0] + 1})][+B({t[0]}).]");
 
 lSystem.AddRule(ProductionNumber.P2, "B", varCount: 1, g: globalParam,
     condition: (t, p, n) => t[0] > 0,
