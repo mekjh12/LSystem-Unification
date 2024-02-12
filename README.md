@@ -120,4 +120,42 @@ lSystem.AddRule(ProductionNumber.P3, "G", varCount: 2, g: globalParam,
 ```
 ![image](https://github.com/mekjh12/LSystem-Unification/assets/122244587/b5f0652b-30e4-445b-8c42-d3e8e01a61c9)
 
+## A rose leaf. p.126
+```c#
+GlobalParam globalParam = new GlobalParam();
+float delta = globalParam.Add("delta", 60);
+float LA = globalParam.Add("LA", 5);
+float RA = globalParam.Add("RA", 1.15f);
+float LB = globalParam.Add("LB", 1.3f);
+float RB = globalParam.Add("RB", 1.25f);
+float LC = globalParam.Add("LC", 3);
+float RC = globalParam.Add("RC", 1.19f);
 
+MString axiom = (MString)"[{A(0,0).}][{A(0,1).}]";
+
+lSystem.AddRule(ProductionNumber.P1, "A", varCount: 2, g: globalParam,
+    condition: (t, p, n) => t[1] == 0,
+    func: (MChar t, MChar p, MChar n, GlobalParam g) =>
+    (MString)$".G({LA},{RA}).[+B({t[0]})G({LC},{RC},{t[0]}).}}][+B({t[0]}){{.]A({t[0] + 1},{t[1]})");
+
+lSystem.AddRule(ProductionNumber.P2, "A", varCount: 2, g: globalParam,
+    condition: (t, p, n) => t[1] == 1,
+    func: (MChar t, MChar p, MChar n, GlobalParam g) =>
+    (MString)$".G({LA},{RA}).[-B({t[0]})G({LC},{RC},{t[0]}).}}][-B({t[0]}){{.]A({t[0] + 1},{t[1]})");
+
+lSystem.AddRule(ProductionNumber.P3, "B", varCount: 1, g: globalParam,
+    condition: (t, p, n) => t[0] > 0,
+    func: (MChar t, MChar p, MChar n, GlobalParam g) => (MString)$"G({LB},{RB})B({t[0] - 1})");
+
+lSystem.AddRule(ProductionNumber.P4, "G", varCount: 2, g: globalParam,
+    condition: (t, p, n) => true,
+    func: (MChar t, MChar p, MChar n, GlobalParam g) => (MString)$"G({t[0] * t[1]},{t[1]})");
+
+lSystem.AddRule(ProductionNumber.P5, "G", varCount: 3, g: globalParam,
+    condition: (t, p, n) => t[2] > 1,
+    func: (MChar t, MChar p, MChar n, GlobalParam g) => (MString)$"G({t[0] * t[1]},{t[1]},{t[2] - 1})");
+
+Console.WriteLine("axiom=" + axiom);
+MString sentence = lSystem.Generate(axiom, n: 25);
+```
+![image](https://github.com/mekjh12/LSystem-Unification/assets/122244587/4354f4b5-0603-4ac5-942a-1b736b633153)
