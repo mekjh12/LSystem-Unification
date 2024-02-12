@@ -121,15 +121,3 @@ lSystem.AddRule(ProductionNumber.P3, "G", varCount: 2, g: globalParam,
 ![image](https://github.com/mekjh12/LSystem-Unification/assets/122244587/b5f0652b-30e4-445b-8c42-d3e8e01a61c9)
 
 
-```js
-axiom=D(1)a(1)
-0=D(2)a(2)
-1=D(3)I[L]a(1)
-2=D(4)I[L]a(2)
-3=S(1)I[L]I[L]a(1)
-4=IS(1)[L]I[L]a(2)
-5=I[L]IS(1)[L]I[L]a(1)
-6=I[L]I[L]IS(1)[L]a(2)
-7=I[L]I[L]I[L]I[L]A
-8=I[L]I[L]I[L]I[L]K
-```
