@@ -159,3 +159,33 @@ Console.WriteLine("axiom=" + axiom);
 MString sentence = lSystem.Generate(axiom, n: 25);
 ```
 ![image](https://github.com/mekjh12/LSystem-Unification/assets/122244587/4354f4b5-0603-4ac5-942a-1b736b633153)
+
+
+
+## Structure of a lily-of-the-valley flower. p.128
+```c#
+LSystemUnif lSystem = new LSystemUnif(_rnd);
+
+GlobalParam globalParam = new GlobalParam();
+float delta = globalParam.Add("delta", 5);
+float d = globalParam.Add("d", 1);
+
+MString axiom = (MString)"G(18)  [X(36)A]/(-72)[X(36)B]  [X(36)A]/(-72)[X(36)B]  [X(36)A]/(-72)[X(36)B]  [X(36)A]/(-72)[X(36)B]  [X(36)A]/(-72)[X(36)B] ";
+
+lSystem.AddRule(ProductionNumber.P1, "A", varCount: 0, g: globalParam,
+    condition: (t, p, n) => true,
+    func: (MChar t, MChar p, MChar n, GlobalParam g) => (MString)$"[&G(1)A{{.].");
+
+lSystem.AddRule(ProductionNumber.P2, "B", varCount: 0, g: globalParam,
+    condition: (t, p, n) => true,
+    func: (MChar t, MChar p, MChar n, GlobalParam g) => (MString)$"B&.G(1).}}");
+
+lSystem.AddRule(ProductionNumber.P3, "X", varCount: 1, g: globalParam,
+    condition: (t, p, n) => true,
+    func: (MChar t, MChar p, MChar n, GlobalParam g) => (MString)$"X({t[0] + 4.5f})");
+
+Console.WriteLine("axiom=" + axiom);
+MString sentence = lSystem.Generate(axiom, n: 14);
+```
+![image](https://github.com/mekjh12/LSystem-Unification/assets/122244587/f7f3d3c7-8be9-40c2-8af6-14284bbc5e05)
+
