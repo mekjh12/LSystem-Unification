@@ -8,43 +8,52 @@ namespace LSystem
     {
         Dictionary<ProductionNumber, List<Production>> _productions;
         static Random _rnd;
+        string _sentence;
+
+        GlobalParam _globalParam;
+
+        public GlobalParam GlobalParameter => _globalParam;
+
+        public string Sentence => _sentence;
 
         public static Vertex3f RandomColor3 => new Vertex3f((float)_rnd.NextDouble(), (float)_rnd.NextDouble(), (float)_rnd.NextDouble());
+
+        public static Vertex2f RandomVertex2f => new Vertex2f((float)_rnd.NextDouble(), (float)_rnd.NextDouble());
 
         public LSystemUnif(Random random)
         {
             _rnd = random;
+            _globalParam = new GlobalParam();
         }
 
-        public void PrintRules()
+        public float AddParameter(string key, float value)
         {
-            foreach (KeyValuePair<ProductionNumber, List<Production>> item in _productions)
+            if (!_globalParam.ContainsKey(key))
             {
-                ProductionNumber productionNumber = item.Key;
-                Console.WriteLine($"*ProductionNumber{productionNumber}");
-                foreach (Production prod in item.Value)
-                {
-
-                }
+                _globalParam.Add(key, value);
             }
-        }
+            else
+            {
+                _globalParam[key] = value;
+            }
+            return value;
+        }        
 
         public void AddRule(ProductionNumber key, string alphabet, int varCount, string leftContext, int leftVarCount,
-            GlobalParam g,
             Condition condition, MultiVariableFunc func, float probability = 1.0f)
         {
             MChar predecessor = new MChar(alphabet, varCount);
             MChar left = new MChar(leftContext, leftVarCount);
 
-            Production production = new Production(condition, g, func, predecessor, left, MChar.Null, probability);
+            Production production = new Production(condition, _globalParam, func, predecessor, left, MChar.Null, probability);
             AddRule(key, production);
         }
 
-        public void AddRule(ProductionNumber key, string alphabet, int varCount, GlobalParam g,
+        public void AddRule(ProductionNumber key, string alphabet, int varCount, 
             Condition condition,  MultiVariableFunc func, float probability = 1.0f)
         {
             MChar predecessor = new MChar(alphabet, varCount);
-            Production production = new Production(condition, g, func, predecessor, MChar.Null, MChar.Null, probability);
+            Production production = new Production(condition, _globalParam, func, predecessor, MChar.Null, MChar.Null, probability);
             AddRule(key, production);
         }
 
@@ -71,7 +80,7 @@ namespace LSystem
         /// <param name="axiom"></param>
         /// <param name="num"></param>
         /// <returns></returns>
-        public MString Generate(MString axiom, int n)
+        public MString Generate(MString axiom, int n, bool isPrintDebug = false)
         {
             MString mString = axiom;
 
@@ -203,10 +212,11 @@ namespace LSystem
                 }
 
                 mString = newString;
-                Console.WriteLine($"{i+1} = {newString}");
+                if (isPrintDebug) Console.WriteLine($"{i+1} = {newString}");
                 oldString = newString;
             }
 
+            _sentence = mString.ToString();
             return mString;
         }
     }

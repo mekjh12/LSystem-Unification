@@ -1,10 +1,7 @@
 ﻿using OpenGL;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 
 namespace LSystem
 {
@@ -26,7 +23,19 @@ namespace LSystem
             if (value > max) value = max;
             return value;
         }
-        
+
+        public static Vertex2f Clamp(this Vertex2f value, float min, float max)
+        {
+            float x = value.x;
+            float y = value.y;
+            if (x < min) x = min;
+            if (x > max) x = max;
+            if (y < min) y = min;
+            if (y > max) y = max;
+            return new Vertex2f(x, y);
+        }
+
+
         public static Vertex3f Cross(this Vertex3f a, Vertex3f b)
         {
             //외적의 방향은 왼손으로 감는다.
@@ -176,24 +185,24 @@ namespace LSystem
             return new Quaternion(v.x, v.y, v.z, s);
         }
 
+        /// <summary>
+        /// axis는 Normalized가 필요없다. 함수 구현시 자동으로 Normalized한다.
+        /// </summary>
+        /// <param name="axis"></param>
+        /// <param name="dst"></param>
+        /// <param name="degree"></param>
+        /// <returns></returns>
         public static Vertex3f Rotate(this Vertex3f axis, Vertex3f dst, float degree)
         {
-            if (axis.x == 0 && axis.y == 0)
-            {
-                return axis.z > 0 ? Matrix3x3f.RotatedZ(degree) * dst : Matrix3x3f.RotatedZ(-degree) * dst;
-            }
-            else
-            {
-                Quaternion q = axis.Rotate(degree);
-                Matrix3x3f mat = ((Matrix3x3f)q);
-                Vertex3f src = mat * dst;
-                return src;
-            }
+            Quaternion q = axis.Normalized.Rotate(degree);
+            Matrix3x3f mat = ((Matrix3x3f)q);
+            Vertex3f src = mat * dst;
+            return src;
         }
 
         public static Quaternion Rotate(this Vertex3f axis, float degree)
         {
-            return new Quaternion(axis, degree);
+            return new Quaternion(axis.Normalized, degree);
         }
 
         /// <summary>
@@ -280,56 +289,6 @@ namespace LSystem
 
         public static bool IsNumberic(this char c) => Char.IsNumber(c);
 
-        public static MString ToMString(this string txt, params string[] structures)
-        {
-            txt = txt.Replace(" ", "");
-
-            if (structures == null)
-                structures = new string[] { "+,+(90)", "-,-(90)", "^,^(90)", "&,&(90)", "\\,\\(90)", "/,/(90)", };
-
-            foreach (string item in structures)
-            {
-                string[] cols = item.Split(',');
-                if (cols.Length == 2)
-                    txt = txt.Replace(cols[0].Trim(), cols[1].Trim());
-            }
-
-
-            MString str = MString.Null;
-            for (int i = 0; i < txt.Length; i++)
-            {
-                char chr = txt[i];
-                if (i + 1 < txt.Length)
-                {
-                    if (txt[i + 1] == '(')
-                    {
-                        int j = txt.IndexOf(")", i + 1);
-                        if (i < j)
-                        {
-                            string[] cols = txt.Substring(i + 2, j - i - 2).Split(',');
-                            float[] pars = new float[cols.Length];
-                            for (int k = 0; k < pars.Length; k++) pars[k] = float.Parse(cols[k].Trim());
-                            str += MChar.Char(chr.ToString(), pars);
-                            i = j;
-                            continue;
-                        }
-                        else
-                        {
-                            new Exception("구문 오류[괄호()]입니다.");
-                        }
-                    }
-                    else
-                    {
-                        str += MChar.Char(chr.ToString());
-                    }
-                }
-                else
-                {
-                    str += MChar.Char(chr.ToString());
-                }
-            }
-            return str;
-        }
 
     }
 }

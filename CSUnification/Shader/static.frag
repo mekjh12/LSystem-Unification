@@ -12,7 +12,5 @@ void main(void)
 {
     vec4 textureColor4 = texture(modelTexture, texCoords);
     if (textureColor4.a < 0.05f) discard;
-    out_Color = isTextured ? fcolor * textureColor4 : fcolor;
-    out_Color = fcolor;
-    
+    out_Color = isTextured ? color * textureColor4 : fcolor;    
 }

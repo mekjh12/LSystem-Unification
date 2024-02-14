@@ -1,6 +1,7 @@
 ﻿using OpenGL;
 using System;
 using System.Collections.Generic;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.ToolTip;
 
 namespace LSystem
 {
@@ -432,10 +433,11 @@ namespace LSystem
             return (rawModel, rawModelLeaf);
         }
 
-        public static RawModel3d Load3dByAonoKunii(MString word, GlobalParam g)
+        public static RawModel3d Load3dByAonoKunii(MString word, GlobalParam g, float rootThick = 10.0f)
         {
             List<float> list = new List<float>();
             List<float> branchList3D = new List<float>();
+            List<float> branchTexcoord = new List<float>();
 
             // 문자열을 순회하면서 경로를 만든다.
             Stack<Pose> stack = new Stack<Pose>();
@@ -451,14 +453,14 @@ namespace LSystem
             string branchContext = "";
 
             int idx = 0;
-            float thick = 100.0f;
+            float thick = rootThick;
 
             // 한 글자마다 탐색함.
             while (idx < word.Length)
             {
                 if (word.Length == 0) break;
                 MChar c = word[idx];
-                Matrix4x4f matQuaternion = (Matrix4x4f)pose.Quaternion;
+                Matrix4x4f matQuaternion = (Matrix4x4f)pose.Matrix4x4f;
                 Vertex3f forward = matQuaternion.ForwardVector();
                 Vertex3f up = matQuaternion.UpVector();
                 Vertex3f left = matQuaternion.LeftVector();
@@ -466,12 +468,11 @@ namespace LSystem
                 if (baseVertor == null)
                 {
                     baseVertor = new Vertex3f[16];
-                    float radius = 0.01f * thick;
+                    float radius = thick;
                     float unitTheta = 360 / baseVertor.Length;
                     for (int i = 0; i < baseVertor.Length; i++)
                     {
-                        baseVertor[i] = new Vertex3f((float)(radius * Math.Cos((unitTheta * i).ToRadian())),
-                            (float)(radius * Math.Sin((unitTheta * i).ToRadian())), 0);
+                        baseVertor[i] = Vertex3f.UnitZ.Rotate(Vertex3f.UnitX * radius, i * unitTheta);
                     }
                 }
 
@@ -489,8 +490,28 @@ namespace LSystem
                     list.Add(end.y);
                     list.Add(end.z);
 
-                    (float[] res, Vertex3f[] rot) = LoadBranch(baseVertor, start, end, 0.01f * thick, false);
+                    (float[] res, Vertex3f[] rot) = LoadBranch(baseVertor, start, end, thick, false);
                     branchList3D.AddRange(res);
+
+                    float uv = 0.0f;
+                    float uvUnit = 1.0f / (float)(baseVertor.Length);
+                    for (int i = 0; i < baseVertor.Length; i++)
+                    {
+                        uv = (float)i * uvUnit;
+                        branchTexcoord.Add(uv);
+                        branchTexcoord.Add(0.0f);
+                        branchTexcoord.Add(uv + uvUnit);
+                        branchTexcoord.Add(0.0f);
+                        branchTexcoord.Add(uv);
+                        branchTexcoord.Add(1.0f);
+                        branchTexcoord.Add(uv);
+                        branchTexcoord.Add(1.0f);
+                        branchTexcoord.Add(uv + uvUnit);
+                        branchTexcoord.Add(0.0f);
+                        branchTexcoord.Add(uv + uvUnit);
+                        branchTexcoord.Add(1.0f);
+                    }
+
                     baseVertor = rot;
 
                     pose.Postiton = end;
@@ -584,10 +605,15 @@ namespace LSystem
                 idx++;
             }
 
+            for (int i = 0; i < branchList3D.Count; i++)
+            {
+                branchList3D[i] = branchList3D[i] * 0.01f;
+            }
             // raw3d 모델을 만든다.
             uint vao = Gl.GenVertexArray();
             Gl.BindVertexArray(vao);
             uint vbo = StoreDataInAttributeList(0, 3, branchList3D.ToArray());
+            StoreDataInAttributeList(1, 2, branchTexcoord.ToArray());
             Gl.BindVertexArray(0);
             RawModel3d rawModel = new RawModel3d(vao, branchList3D.ToArray());
             return rawModel;
@@ -761,11 +787,12 @@ namespace LSystem
             Vertex3f f = end - start;
             Vertex3f u = f.Cross(s).Normalized;
             Vertex3f l = u.Cross(f).Normalized;
-            evec[0] = isRelativesize ? start + f + l * (terminalThick) : start + f + l * (ratioThick);
+            evec[0] = f + l * (ratioThick);
             float unitDeg = 360.0f / num;
 
-            Vertex3f r0 = evec[0] - start;
-            for (int i = 1; i < num; i++)
+            // 윗면을 만든다.
+            Vertex3f r0 = evec[0];
+            for (int i = 0; i < num; i++)
             {
                 Vertex3f src = f.Rotate(r0, unitDeg * i);
                 evec[i] = src + start;

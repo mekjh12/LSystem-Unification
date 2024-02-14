@@ -1,34 +1,39 @@
 ﻿using OpenGL;
 using System;
 using System.Collections.Generic;
-using System.Net.Http.Headers;
-using System.Text.RegularExpressions;
-using System.Windows.Forms;
-using LSystem;
 using System.Drawing;
 using System.Drawing.Imaging;
-using System.Windows.Media.Media3D;
+using System.IO;
+using System.Windows.Forms;
 
 namespace LSystem
 {
     public partial class Form3L : Form
     {
+        enum MOUSE_MOVE_MODE { Orbit, Move };
+        bool _isMouseDown = false;
+        MOUSE_MOVE_MODE _mouseMode = MOUSE_MOVE_MODE.Orbit;
+
         EngineLoop _gameLoop;
         List<Entity> entities;
         StaticShader _shader;
         PolygonMode _polygonMode = PolygonMode.Fill;
         Random _rnd;
+        LSystemUnif _lSystem;
 
         public Form3L()
         {
             InitializeComponent();
             _rnd = new Random();
+            _lSystem = new LSystemUnif(_rnd);
         }
+
 
         private void Form3L_Load(object sender, EventArgs e)
         {
             // ### 초기화 ###
             IniFile.SetFileName("setup.ini");
+            SyncControlFirst();
 
             _gameLoop = new EngineLoop();
             _shader = new StaticShader();
@@ -37,38 +42,34 @@ namespace LSystem
             Texture texture = new Texture(EngineLoop.PROJECT_PATH + @"\Res\bricks.jpg");
             TexturedModel texturedModel = new TexturedModel(Loader3d.LoadCube(20, 20), texture);
 
-            int num = 1;
-            for (int i = -num; i < num; i++)
-            {
-                for (int j = -num; j < num; j++)
-                {
-
-                }
-            }
-
             Entity ent = new Entity(texturedModel);
             ent.Position = new Vertex3f(0, 0, 0);
             ent.Scaled(20, 20, 0.1f);
             ent.Material = Material.White;
             entities.Add(ent);
 
+            float cx = float.Parse(IniFile.GetPrivateProfileString("camera", "x", "0.0"));
+            float cy = float.Parse(IniFile.GetPrivateProfileString("camera", "y", "0.0"));
+            float cz = float.Parse(IniFile.GetPrivateProfileString("camera", "z", "0.0"));
+
+            _gameLoop.Camera = new OrbitCamera("", 13, -2, 3, 15);           
+            _gameLoop.Camera.Position = new Vertex3f(cx, cy, cz);
+            _gameLoop.Camera.CameraYaw = float.Parse(IniFile.GetPrivateProfileString("camera", "yaw", "0.0"));
+            _gameLoop.Camera.CameraPitch = float.Parse(IniFile.GetPrivateProfileString("camera", "pitch", "0.0"));
+
             // ### 업데이트 ###
             _gameLoop.UpdateFrame = (deltaTime) =>
             {
                 int w = this.glControl1.Width;
                 int h = this.glControl1.Height;
+
                 if (_gameLoop.Width * _gameLoop.Height == 0)
                 {
                     _gameLoop.Init(w, h);
                     _gameLoop.Camera.Init(w, h);
-                    float cx = float.Parse(IniFile.GetPrivateProfileString("camera", "x", "0.0"));
-                    float cy = float.Parse(IniFile.GetPrivateProfileString("camera", "y", "0.0"));
-                    float cz = float.Parse(IniFile.GetPrivateProfileString("camera", "z", "0.0"));
-                    _gameLoop.Camera.Position = new Vertex3f(cx, cy, cz);
-                    _gameLoop.Camera.CameraYaw = float.Parse(IniFile.GetPrivateProfileString("camera", "yaw", "0.0"));
-                    _gameLoop.Camera.CameraPitch = float.Parse(IniFile.GetPrivateProfileString("camera", "pitch", "0.0"));
                 }
-                FPSCamera camera = _gameLoop.Camera;
+
+                OrbitCamera camera = (OrbitCamera)_gameLoop.Camera;
 
                 this.Text = $"{FramePerSecond.FPS}fps, t={FramePerSecond.GlobalTick} p={camera.Position}";
             };
@@ -76,12 +77,12 @@ namespace LSystem
             //  ### 렌더링 ###
             _gameLoop.RenderFrame = (deltaTime) =>
             {
-                FPSCamera camera = _gameLoop.Camera;
+                OrbitCamera camera = (OrbitCamera)_gameLoop.Camera;
 
                 //Gl.Enable(EnableCap.CullFace);
                 //Gl.CullFace(CullFaceMode.Back);
 
-                Gl.ClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+                Gl.ClearColor(0.3f, 0.3f, 0.3f, 1.0f);
                 Gl.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
                 Gl.Enable(EnableCap.DepthTest);
 
@@ -97,20 +98,58 @@ namespace LSystem
             };
         }
 
-        private void glControl1_MouseWheel(object sender, System.Windows.Forms.MouseEventArgs e)
+        private void glControl1_MouseWheel(object sender, MouseEventArgs e)
         {
-            FPSCamera camera = _gameLoop.Camera;
-            camera?.GoForward(0.02f * e.Delta);
+            Camera camera = _gameLoop.Camera;
+            if (camera is FpsCamera) camera?.GoForward(0.02f * e.Delta);
+            if (camera is OrbitCamera) (camera as OrbitCamera)?.FarAway(-0.005f * e.Delta);
         }
 
-        private void glControl1_MouseMove(object sender, System.Windows.Forms.MouseEventArgs e)
+        private void glControl1_MouseDoubleClick(object sender, MouseEventArgs e)
         {
-            Mouse.CurrentPosition = new Vertex2i(e.X, e.Y);
-            FPSCamera camera = _gameLoop.Camera;
-            Vertex2i delta = Mouse.DeltaPosition;
-            camera?.Yaw(-delta.x);
-            camera?.Pitch(-delta.y);
-            Mouse.PrevPosition = new Vertex2i(e.X, e.Y);
+            int px = e.X, py = e.Y;
+            float width = (float)this.glControl1.Width;
+            float height = (float)this.glControl1.Height;
+            Vertex3f contactPoint = MousePickUp.PickUp(_gameLoop.Camera, px, py, width, height);
+            _gameLoop.Camera.GoTo(contactPoint);
+        }
+
+        private void glControl1_MouseDown(object sender, MouseEventArgs e)
+        {
+            _isMouseDown = true;
+            if (e.Button == MouseButtons.Right)
+                _mouseMode = MOUSE_MOVE_MODE.Orbit;
+            else if (e.Button == MouseButtons.Left)
+                _mouseMode = MOUSE_MOVE_MODE.Move;
+        }
+
+        private void glControl1_MouseUp(object sender, MouseEventArgs e)
+        {
+            _isMouseDown = false;
+        }
+
+        private void glControl1_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (_gameLoop.Camera is OrbitCamera)
+            {
+                Camera camera = _gameLoop.Camera;
+                Mouse.CurrentPosition = new Vertex2i(e.X, e.Y);
+                Vertex2i delta = Mouse.DeltaPosition;
+                if (_isMouseDown)
+                {
+                    if (_mouseMode == MOUSE_MOVE_MODE.Orbit)
+                    {
+                        camera?.Yaw(-delta.x);
+                        camera?.Pitch(delta.y);
+                    }
+                    else if (_mouseMode == MOUSE_MOVE_MODE.Move)
+                    {
+                        camera.GoForward(0.05f * delta.y);
+                        camera.GoRight(0.05f * -delta.x);
+                    }
+                }
+                Mouse.PrevPosition = new Vertex2i(e.X, e.Y);
+            }
         }
 
         private void glControl1_Render(object sender, GlControlEventArgs e)
@@ -151,58 +190,212 @@ namespace LSystem
                 _polygonMode = (_polygonMode == PolygonMode.Fill) ?
                     PolygonMode.Line : PolygonMode.Fill;
             }
-            else if (e.KeyCode == Keys.P)
-            {
-                int width = this.glControl1.Width;
-                int height = this.glControl1.Height;
-                Bitmap bitmap = new Bitmap(width, height);
-                BitmapData bData = bitmap.LockBits(new Rectangle(0, 0, bitmap.Width, bitmap.Height),
-                    ImageLockMode.WriteOnly, System.Drawing.Imaging.PixelFormat.Format24bppRgb);
-                Gl.ReadPixels(0, 0, width, height, OpenGL.PixelFormat.Bgr, PixelType.UnsignedByte, bData.Scan0);
-                bitmap.UnlockBits(bData);
-                bitmap.RotateFlip(RotateFlipType.RotateNoneFlipY);
-                Gl.Finish();
-                Clipboard.SetImage(bitmap);
-                MessageBox.Show("화면을 캡처하였습니다.");
-            }
             else if (e.KeyCode == Keys.D1)
             {
                 Entity ent = (entities.Count > 0) ? entities[0] : null;
                 entities.Clear();
                 entities.Add(ent);
-
-                LSystemUnif lSystem = new LSystemUnif(_rnd);
-
-                GlobalParam globalParam = new GlobalParam();
-                float delta = globalParam.Add("delta", 5);
-                float d = globalParam.Add("d", 1);
-
-                MString axiom = (MString)"G(18)  [X(36)A]/(-72)[X(36)B]  [X(36)A]/(-72)[X(36)B]  [X(36)A]/(-72)[X(36)B]  [X(36)A]/(-72)[X(36)B]  [X(36)A]/(-72)[X(36)B] ";
-
-                lSystem.AddRule(ProductionNumber.P1, "A", varCount: 0, g: globalParam,
-                    condition: (t, p, n) => true,
-                    func: (MChar t, MChar p, MChar n, GlobalParam g) => (MString)$"[&G(1)A{{.].");
-
-                lSystem.AddRule(ProductionNumber.P2, "B", varCount: 0, g: globalParam,
-                    condition: (t, p, n) => true,
-                    func: (MChar t, MChar p, MChar n, GlobalParam g) => (MString)$"B&.G(1).}}");
-
-                lSystem.AddRule(ProductionNumber.P3, "X", varCount: 1, g: globalParam,
-                    condition: (t, p, n) => true,
-                    func: (MChar t, MChar p, MChar n, GlobalParam g) => (MString)$"X({t[0] + 4.5f})");
-
-                Console.WriteLine("axiom=" + axiom);
-                MString sentence = lSystem.Generate(axiom, n: 14);
-                Console.WriteLine("result=" + sentence);
-
-                (RawModel3d branch, RawModel3d stem) = LoaderLSystem.Load3dRoseLeaf(sentence, globalParam, Vertex3f.One);
-
-                Entity e1 = new Entity(branch, PrimitiveType.Triangles);
-                entities.Add(e1);
-
-                Entity e2 = new Entity(stem, PrimitiveType.Lines);
-                entities.Add(e2);
+                MString sentence = CreateTree();
+                LoadEntity(sentence, _lSystem.GlobalParameter);
             }
         }
+
+        public MString CreateTree()
+        {
+            float d1 = _lSystem.AddParameter("d1", this.tbDivergenceAngle1.Value); // divergence angle 1
+            float d2 = _lSystem.AddParameter("d2", this.tbDivergenceAngle2.Value); // divergence angle 2
+            float a = _lSystem.AddParameter("a", tbBranchingAngle.Value);          // branching angle
+            float lr = _lSystem.AddParameter("lr", (float)tbElongationRate.Value * 0.001f);    // elongation rate
+            float vr = _lSystem.AddParameter("vr", (float)tbWidthIncreaseRate.Value * 0.001f); // width increase rate
+
+            float px = (float)Math.Cos(caTrophism.Value.ToRadian());
+            float py = (float)Math.Sin(caTrophism.Value.ToRadian());
+            Vertex3f tropismVector = new Vertex3f(px, py, -tbVectorLength.Value).Normalized;
+
+            _lSystem.AddParameter("Tx", tropismVector.x); 
+            _lSystem.AddParameter("Ty", tropismVector.y);
+            _lSystem.AddParameter("Tz", tropismVector.z);
+            _lSystem.AddParameter("e", tbBendingConstant.Value * 0.01f);
+
+            MString axiom = (MString)this.textBox1.Text;
+
+            _lSystem.AddRule(ProductionNumber.P1, "A", varCount: 0,
+                condition: (t, p, n) => true,
+                func: (MChar t, MChar p, MChar n, GlobalParam g) =>
+                (MString)$"!({vr})F(50)[&({a})F(50)A]" +
+                (MString)$"/({d1})[&({a})F(50)A]" +
+                (MString)$"/({d2})[&({a})F(50)A]");
+
+            _lSystem.AddRule(ProductionNumber.P2, "F", varCount: 1,
+                condition: (t, p, n) => true,
+                func: (MChar t, MChar p, MChar n, GlobalParam g) => (MString)$"F({t[0] * lr})");
+
+            _lSystem.AddRule(ProductionNumber.P3, "!", varCount: 1,
+                condition: (t, p, n) => true,
+                func: (MChar t, MChar p, MChar n, GlobalParam g) => (MString)$"!({t[0] * vr})");
+
+            Console.WriteLine("axiom=" + axiom);
+            MString sentence = _lSystem.Generate(axiom, n: (int)this.nbrStep.Value, isPrintDebug: true);
+            Console.WriteLine("result=" + sentence);
+            return sentence;
+        }
+
+        private void LoadEntity(MString sentence, GlobalParam globalParam)
+        {
+            (RawModel3d branch, RawModel3d leaf) = TreeLoader.Load(sentence, globalParam, 50.0f);
+            TexturedModel tree = new TexturedModel(branch, new Texture(EngineLoop.PROJECT_PATH + "\\Res\\t4_b.bmp"));
+            TexturedModel leafModel = new TexturedModel(leaf, new Texture(EngineLoop.PROJECT_PATH + "\\Res\\t4_c.png"));
+
+            Vertex3f f = _gameLoop.Camera.Forward;
+            Vertex3f p =_gameLoop.Camera.Position;
+            float t = (f.z == 0) ? 0.0f : -p.z / f.z;
+            Vertex3f pos = p + f * t;
+            Entity e1 = new Entity(tree, PrimitiveType.Triangles);
+            e1.IsTextured = true;
+            e1.Position = pos;
+            entities.Add(e1);
+
+            Entity e2 = new Entity(leafModel, PrimitiveType.Triangles);
+            e2.IsTextured = true;
+            e2.Position = pos;
+            entities.Add(e2);
+        }
+
+        private void btnClear_Click(object sender, EventArgs e)
+        {
+            Entity floor  = entities.Count > 0 ? entities[0] : null;
+            entities.Clear();
+            entities.Add(floor);
+        }
+
+        private void 화면저장ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            int width = this.glControl1.Width;
+            int height = this.glControl1.Height;
+            Bitmap bitmap = new Bitmap(width, height);
+            BitmapData bData = bitmap.LockBits(new Rectangle(0, 0, bitmap.Width, bitmap.Height),
+                ImageLockMode.WriteOnly, System.Drawing.Imaging.PixelFormat.Format24bppRgb);
+            Gl.ReadPixels(0, 0, width, height, OpenGL.PixelFormat.Bgr, PixelType.UnsignedByte, bData.Scan0);
+            bitmap.UnlockBits(bData);
+            bitmap.RotateFlip(RotateFlipType.RotateNoneFlipY);
+            Gl.Finish();
+            Clipboard.SetImage(bitmap);
+            MessageBox.Show("화면을 캡처하였습니다.");
+        }
+
+        private void code읽기ToolStripMenuItem_Click_1(object sender, EventArgs e)
+        {
+            EngineLoop.ShowCursor(true);
+            this.openFileDialog1.InitialDirectory = EngineLoop.PROJECT_PATH + "\\Res\\";
+            this.openFileDialog1.Filter = "*.code|*.code";
+            if (this.openFileDialog1.ShowDialog() == DialogResult.OK)
+            {
+                float d1 = _lSystem.AddParameter("d1", tbDivergenceAngle1.Value);
+                float d2 = _lSystem.AddParameter("d2", tbDivergenceAngle2.Value);
+                float a = _lSystem.AddParameter("a", tbBranchingAngle.Value);
+                float lr = _lSystem.AddParameter("lr", tbElongationRate.Value * 0.001f);
+                float vr = _lSystem.AddParameter("vr", tbWidthIncreaseRate.Value * 0.001f);
+                _lSystem.AddParameter("Tx", 0.01f);
+                _lSystem.AddParameter("Ty", 0.01f);
+                _lSystem.AddParameter("Tz", -1.0f);
+                _lSystem.AddParameter("e", tbBendingConstant.Value * 0.01f);
+
+                MString sentence = (MString)File.ReadAllText(this.openFileDialog1.FileName);
+                Console.WriteLine("result=" + sentence);
+                LoadEntity(sentence, _lSystem.GlobalParameter);
+                EngineLoop.ShowCursor(true);
+            }
+        }
+
+        private void code저장ToolStripMenuItem_Click_1(object sender, EventArgs e)
+        {
+            EngineLoop.ShowCursor(true);
+            this.saveFileDialog1.InitialDirectory = EngineLoop.PROJECT_PATH + "\\Res\\";
+            if (this.saveFileDialog1.ShowDialog() == DialogResult.OK)
+            {
+                File.WriteAllText(this.saveFileDialog1.FileName, _lSystem.Sentence);
+                MessageBox.Show("코드를 저장하였습니다.");
+                EngineLoop.ShowCursor(true);
+            }
+        }
+
+        private void btnCreate_Click(object sender, EventArgs e)
+        {
+            MString sentence = CreateTree();
+            LoadEntity(sentence, _lSystem.GlobalParameter);
+        }
+
+        private void tbDivergenceAngle1_Scroll(object sender, EventArgs e)
+        {
+            lbDivergenceAngle1.Text = "DivergenceAngle1=" + tbDivergenceAngle1.Value;
+            IniFile.WritePrivateProfileString("globalParam", "DivergenceAngle1", tbDivergenceAngle1.Value);
+        }
+
+        private void tbDivergenceAngle2_Scroll(object sender, EventArgs e)
+        {
+            lbDivergenceAngle2.Text = "DivergenceAngle2=" + tbDivergenceAngle2.Value;
+            IniFile.WritePrivateProfileString("globalParam", "DivergenceAngle2", tbDivergenceAngle2.Value);
+        }
+
+        private void tbBranchingAngle_Scroll(object sender, EventArgs e)
+        {
+            lbBranchingAngle.Text = "BranchingAngle=" + tbBranchingAngle.Value;
+            IniFile.WritePrivateProfileString("globalParam", "BranchingAngle", tbBranchingAngle.Value);
+        }
+
+        private void tbElongationRate_Scroll(object sender, EventArgs e)
+        {
+            lbElongationRate.Text = "ElongationRate=" + (tbElongationRate.Value * 0.001f);
+            IniFile.WritePrivateProfileString("globalParam", "ElongationRate", tbElongationRate.Value);
+        }
+
+        private void tbWidthIncreaseRate_Scroll(object sender, EventArgs e)
+        {
+            lbWidthIncreaseRate.Text = "WidthIncRate=" + (tbWidthIncreaseRate.Value * 0.001f);
+            IniFile.WritePrivateProfileString("globalParam", "WidthIncreaseRate", tbWidthIncreaseRate.Value);
+        }
+
+        private void tbBendingConstant_Scroll(object sender, EventArgs e)
+        {
+            lbBendingConstant.Text = "BendingConstant=" + (tbBendingConstant.Value * 0.01f);
+            IniFile.WritePrivateProfileString("globalParam", "BendingConstant", tbBendingConstant.Value);
+        }
+
+        private void tbVectorLength_Scroll(object sender, EventArgs e)
+        {
+            lbTrophismVector.Text = "TropismVecLength=" + tbVectorLength.Value * 0.01f;
+            IniFile.WritePrivateProfileString("globalParam", "VectorLength", tbVectorLength.Value);
+        }
+
+        private void caTrophism_ValueChanged(object sender, EventArgs e)
+        {
+            IniFile.WritePrivateProfileString("globalParam", "Trophism", caTrophism.Value);
+        }
+
+        private void nbrStep_ValueChanged(object sender, EventArgs e)
+        {
+            IniFile.WritePrivateProfileString("globalParam", "Step", (int)this.nbrStep.Value);
+        }
+
+        private void SyncControlFirst()
+        {
+            nbrStep.Value = (int)IniFile.GetPrivateProfileFloat("globalParam", "Step", 5);
+            caTrophism.Value = (int)IniFile.GetPrivateProfileFloat("globalParam", "Trophism", 45);
+            tbWidthIncreaseRate.Value = (int)IniFile.GetPrivateProfileFloat("globalParam", "WidthIncreaseRate", 1000);
+            tbElongationRate.Value = (int)IniFile.GetPrivateProfileFloat("globalParam", "ElongationRate", 1000);
+            tbBranchingAngle.Value = (int)IniFile.GetPrivateProfileFloat("globalParam", "BranchingAngle");
+            tbDivergenceAngle1.Value = (int)IniFile.GetPrivateProfileFloat("globalParam", "DivergenceAngle1");
+            tbDivergenceAngle2.Value = (int)IniFile.GetPrivateProfileFloat("globalParam", "DivergenceAngle2");
+            tbBendingConstant.Value = (int)IniFile.GetPrivateProfileFloat("globalParam", "BendingConstant");
+            tbVectorLength.Value = (int)IniFile.GetPrivateProfileFloat("globalParam", "VectorLength", 100);
+            tbWidthIncreaseRate_Scroll(null, null);
+            tbElongationRate_Scroll(null, null);
+            tbBranchingAngle_Scroll(null, null);
+            tbDivergenceAngle1_Scroll(null, null);
+            tbDivergenceAngle2_Scroll(null, null);
+            tbBendingConstant_Scroll(null, null);
+            tbVectorLength_Scroll(null, null);
+        }
+
     }
 }

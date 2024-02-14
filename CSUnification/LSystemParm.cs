@@ -37,7 +37,11 @@ namespace LSystem
             return _value.ContainsKey(key);
         }
 
-        public float this[string key] => _value[key];
+        public float this[string key]
+        {
+            get => _value[key];
+            set => _value[key] = value;
+        }
         
     }
 

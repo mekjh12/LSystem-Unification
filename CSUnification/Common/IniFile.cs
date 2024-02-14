@@ -59,7 +59,7 @@ namespace LSystem
         {
             StringBuilder sb = new StringBuilder();
             GetPrivateProfileString(section, key, "", sb, 32, IniFile.s_FILENAME);
-            string res = sb.ToString();
+            string res = sb.ToString().Trim();
             return (res == "") ? defalut : float.Parse(res);
         }
 

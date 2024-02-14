@@ -14,7 +14,7 @@ namespace LSystem
 		private Vertex2i _mousePosition = Vertex2i.Zero;
 		private Vertex2f _mouseDeltaPos = Vertex2f.Zero;
 
-		[DllImport("user32.dll")] private static extern int ShowCursor(bool bShow);
+		[DllImport("user32.dll")] public static extern int ShowCursor(bool bShow);
 
 		[DllImport("user32.dll")] static extern bool GetCursorPos(out POINT lpPoint);
 
