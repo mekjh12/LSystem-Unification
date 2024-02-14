@@ -58,6 +58,15 @@
             this.lbBendingConstant = new System.Windows.Forms.Label();
             this.tbVectorLength = new System.Windows.Forms.TrackBar();
             this.tbBendingConstant = new System.Windows.Forms.TrackBar();
+            this.btnRandom = new System.Windows.Forms.Button();
+            this.pictureBox1 = new System.Windows.Forms.PictureBox();
+            this.pictureBox2 = new System.Windows.Forms.PictureBox();
+            this.tbLeafWidth = new System.Windows.Forms.TrackBar();
+            this.lbLeafWidth = new System.Windows.Forms.Label();
+            this.tbLeafHeight = new System.Windows.Forms.TrackBar();
+            this.lbLeafHeight = new System.Windows.Forms.Label();
+            this.label3 = new System.Windows.Forms.Label();
+            this.nmLeafRotCount = new System.Windows.Forms.NumericUpDown();
             this.menuStrip1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.nbrStep)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.tbDivergenceAngle1)).BeginInit();
@@ -67,6 +76,11 @@
             ((System.ComponentModel.ISupportInitialize)(this.tbWidthIncreaseRate)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.tbVectorLength)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.tbBendingConstant)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox2)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.tbLeafWidth)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.tbLeafHeight)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.nmLeafRotCount)).BeginInit();
             this.SuspendLayout();
             // 
             // glControl1
@@ -308,7 +322,7 @@
             // tbWidthIncreaseRate
             // 
             this.tbWidthIncreaseRate.Location = new System.Drawing.Point(793, 201);
-            this.tbWidthIncreaseRate.Maximum = 2000;
+            this.tbWidthIncreaseRate.Maximum = 9000;
             this.tbWidthIncreaseRate.Minimum = 1000;
             this.tbWidthIncreaseRate.Name = "tbWidthIncreaseRate";
             this.tbWidthIncreaseRate.Size = new System.Drawing.Size(250, 45);
@@ -363,7 +377,7 @@
             // tbVectorLength
             // 
             this.tbVectorLength.Location = new System.Drawing.Point(809, 234);
-            this.tbVectorLength.Maximum = 1000;
+            this.tbVectorLength.Maximum = 10000;
             this.tbVectorLength.Minimum = 100;
             this.tbVectorLength.Name = "tbVectorLength";
             this.tbVectorLength.Size = new System.Drawing.Size(149, 45);
@@ -383,12 +397,130 @@
             this.tbBendingConstant.Value = 33;
             this.tbBendingConstant.Scroll += new System.EventHandler(this.tbBendingConstant_Scroll);
             // 
+            // btnRandom
+            // 
+            this.btnRandom.Font = new System.Drawing.Font("Consolas", 14.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.btnRandom.Location = new System.Drawing.Point(628, 307);
+            this.btnRandom.Name = "btnRandom";
+            this.btnRandom.Size = new System.Drawing.Size(127, 35);
+            this.btnRandom.TabIndex = 28;
+            this.btnRandom.Text = "랜덤설정";
+            this.btnRandom.UseVisualStyleBackColor = true;
+            this.btnRandom.Click += new System.EventHandler(this.btnRandom_Click);
+            // 
+            // pictureBox1
+            // 
+            this.pictureBox1.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.pictureBox1.Location = new System.Drawing.Point(628, 389);
+            this.pictureBox1.Name = "pictureBox1";
+            this.pictureBox1.Size = new System.Drawing.Size(157, 146);
+            this.pictureBox1.SizeMode = System.Windows.Forms.PictureBoxSizeMode.StretchImage;
+            this.pictureBox1.TabIndex = 29;
+            this.pictureBox1.TabStop = false;
+            this.pictureBox1.Click += new System.EventHandler(this.pictureBox1_Click);
+            // 
+            // pictureBox2
+            // 
+            this.pictureBox2.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.pictureBox2.Location = new System.Drawing.Point(628, 541);
+            this.pictureBox2.Name = "pictureBox2";
+            this.pictureBox2.Size = new System.Drawing.Size(157, 146);
+            this.pictureBox2.SizeMode = System.Windows.Forms.PictureBoxSizeMode.StretchImage;
+            this.pictureBox2.TabIndex = 30;
+            this.pictureBox2.TabStop = false;
+            this.pictureBox2.Click += new System.EventHandler(this.pictureBox2_Click);
+            // 
+            // tbLeafWidth
+            // 
+            this.tbLeafWidth.Location = new System.Drawing.Point(794, 410);
+            this.tbLeafWidth.Maximum = 1000;
+            this.tbLeafWidth.Name = "tbLeafWidth";
+            this.tbLeafWidth.Size = new System.Drawing.Size(248, 45);
+            this.tbLeafWidth.TabIndex = 32;
+            this.tbLeafWidth.TickStyle = System.Windows.Forms.TickStyle.None;
+            this.tbLeafWidth.Value = 33;
+            this.tbLeafWidth.Scroll += new System.EventHandler(this.tbLeafWidth_Scroll);
+            // 
+            // lbLeafWidth
+            // 
+            this.lbLeafWidth.AutoSize = true;
+            this.lbLeafWidth.Font = new System.Drawing.Font("Consolas", 11.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lbLeafWidth.Location = new System.Drawing.Point(791, 389);
+            this.lbLeafWidth.Name = "lbLeafWidth";
+            this.lbLeafWidth.Size = new System.Drawing.Size(80, 18);
+            this.lbLeafWidth.TabIndex = 31;
+            this.lbLeafWidth.Text = "LeafWidth";
+            // 
+            // tbLeafHeight
+            // 
+            this.tbLeafHeight.Location = new System.Drawing.Point(794, 458);
+            this.tbLeafHeight.Maximum = 1000;
+            this.tbLeafHeight.Name = "tbLeafHeight";
+            this.tbLeafHeight.Size = new System.Drawing.Size(248, 45);
+            this.tbLeafHeight.TabIndex = 34;
+            this.tbLeafHeight.TickStyle = System.Windows.Forms.TickStyle.None;
+            this.tbLeafHeight.Value = 33;
+            this.tbLeafHeight.Scroll += new System.EventHandler(this.tbLeafHeight_Scroll);
+            // 
+            // lbLeafHeight
+            // 
+            this.lbLeafHeight.AutoSize = true;
+            this.lbLeafHeight.Font = new System.Drawing.Font("Consolas", 11.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lbLeafHeight.Location = new System.Drawing.Point(791, 437);
+            this.lbLeafHeight.Name = "lbLeafHeight";
+            this.lbLeafHeight.Size = new System.Drawing.Size(88, 18);
+            this.lbLeafHeight.TabIndex = 33;
+            this.lbLeafHeight.Text = "LeafHeight";
+            // 
+            // label3
+            // 
+            this.label3.AutoSize = true;
+            this.label3.Font = new System.Drawing.Font("Consolas", 11.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.label3.Location = new System.Drawing.Point(806, 496);
+            this.label3.Name = "label3";
+            this.label3.Size = new System.Drawing.Size(40, 18);
+            this.label3.TabIndex = 36;
+            this.label3.Text = "Step";
+            // 
+            // nmLeafRotCount
+            // 
+            this.nmLeafRotCount.Font = new System.Drawing.Font("Consolas", 11.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.nmLeafRotCount.Location = new System.Drawing.Point(856, 494);
+            this.nmLeafRotCount.Maximum = new decimal(new int[] {
+            9,
+            0,
+            0,
+            0});
+            this.nmLeafRotCount.Minimum = new decimal(new int[] {
+            1,
+            0,
+            0,
+            0});
+            this.nmLeafRotCount.Name = "nmLeafRotCount";
+            this.nmLeafRotCount.Size = new System.Drawing.Size(120, 25);
+            this.nmLeafRotCount.TabIndex = 35;
+            this.nmLeafRotCount.Value = new decimal(new int[] {
+            3,
+            0,
+            0,
+            0});
+            this.nmLeafRotCount.ValueChanged += new System.EventHandler(this.nmLeafRotCount_ValueChanged);
+            // 
             // Form3L
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.SystemColors.Control;
             this.ClientSize = new System.Drawing.Size(1055, 697);
+            this.Controls.Add(this.label3);
+            this.Controls.Add(this.nmLeafRotCount);
+            this.Controls.Add(this.tbLeafHeight);
+            this.Controls.Add(this.lbLeafHeight);
+            this.Controls.Add(this.tbLeafWidth);
+            this.Controls.Add(this.lbLeafWidth);
+            this.Controls.Add(this.pictureBox2);
+            this.Controls.Add(this.pictureBox1);
+            this.Controls.Add(this.btnRandom);
             this.Controls.Add(this.tbBendingConstant);
             this.Controls.Add(this.tbVectorLength);
             this.Controls.Add(this.lbBendingConstant);
@@ -429,6 +561,11 @@
             ((System.ComponentModel.ISupportInitialize)(this.tbWidthIncreaseRate)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.tbVectorLength)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.tbBendingConstant)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox2)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.tbLeafWidth)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.tbLeafHeight)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.nmLeafRotCount)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -466,5 +603,14 @@
         private System.Windows.Forms.Label lbBendingConstant;
         private System.Windows.Forms.TrackBar tbVectorLength;
         private System.Windows.Forms.TrackBar tbBendingConstant;
+        private System.Windows.Forms.Button btnRandom;
+        private System.Windows.Forms.PictureBox pictureBox1;
+        private System.Windows.Forms.PictureBox pictureBox2;
+        private System.Windows.Forms.TrackBar tbLeafWidth;
+        private System.Windows.Forms.Label lbLeafWidth;
+        private System.Windows.Forms.TrackBar tbLeafHeight;
+        private System.Windows.Forms.Label lbLeafHeight;
+        private System.Windows.Forms.Label label3;
+        private System.Windows.Forms.NumericUpDown nmLeafRotCount;
     }
 }

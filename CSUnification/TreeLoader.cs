@@ -1,6 +1,7 @@
 ﻿using OpenGL;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.Design.Serialization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -9,7 +10,82 @@ namespace LSystem
 {
     public class TreeLoader
     {
-        public static (RawModel3d, RawModel3d) Load(MString word, GlobalParam g, float rootThick = 10.0f, int resolution = 8)
+        private static float GetRootStemRadius(MString word)
+        {
+            // 문자열을 순회하면서 경로를 만든다.
+            Stack<float> thickStack = new Stack<float>();
+
+            int idx = 0;
+            float thick = 0.0f;
+
+            // 한 글자마다 탐색함.
+            while (idx < word.Length)
+            {
+                if (word.Length == 0) break;
+                MChar c = word[idx];
+
+                if (c.Alphabet == "!")
+                {
+                    thick = c[0];
+                }
+                else if (c.Alphabet == "[")
+                {
+                    thickStack.Push(thick);
+                }
+                else if (c.Alphabet == "]")
+                {
+                    thick = thickStack.Pop();
+                }
+
+                idx++;
+            }
+
+            return thick;
+        }
+
+        private static void CreateLeaf(GlobalParam g, Pose pose, float branchLength, out List<float> leafVertexList3D, out List<float> leafTexCoordList3D)
+        {
+            leafVertexList3D = new List<float>();
+            leafTexCoordList3D = new List<float>();
+
+            float leafWidth = g.ContainsKey("leafWidth") ? g["leafWidth"] : 1.0f;
+            float leafHeight = g.ContainsKey("leafHeight") ? g["leafHeight"] : 1.0f;
+
+            Vertex3f[] p = new Vertex3f[6];
+            p[0] = new Vertex3f(-leafWidth, 0, -1);
+            p[1] = new Vertex3f(leafWidth, 0, -1);
+            p[2] = new Vertex3f(leafWidth, 0, leafHeight);
+            p[3] = new Vertex3f(-leafWidth, 0, -1);
+            p[4] = new Vertex3f(leafWidth, 0, leafHeight);
+            p[5] = new Vertex3f(-leafWidth, 0, leafHeight);
+
+            int leafRotCount = (int)g["leafRotCount"];
+            int unitAngle = (int)(180.0f / (float)leafRotCount);
+            int angle = 0;
+            for (int n = 0; n < leafRotCount; n++)
+            {
+                Matrix3x3f localRot = ((Matrix3x3f)pose.Quaternion.Concatenate(Vertex3f.UnitZ.Rotate(angle)));
+                angle += unitAngle;
+
+                for (int i = 0; i < 6; i++)
+                {
+                    Vertex3f leafPos = localRot * (p[i] * branchLength * 0.5f) + pose.Postiton * 0.01f;
+                    leafVertexList3D.Add(leafPos.x);
+                    leafVertexList3D.Add(leafPos.y);
+                    leafVertexList3D.Add(leafPos.z);
+                }
+
+                leafTexCoordList3D.Add(1); leafTexCoordList3D.Add(1);
+                leafTexCoordList3D.Add(0); leafTexCoordList3D.Add(1);
+                leafTexCoordList3D.Add(0); leafTexCoordList3D.Add(0);
+                leafTexCoordList3D.Add(1); leafTexCoordList3D.Add(1);
+                leafTexCoordList3D.Add(0); leafTexCoordList3D.Add(0);
+                leafTexCoordList3D.Add(1); leafTexCoordList3D.Add(0);
+            }
+
+        }
+
+        public static (RawModel3d, RawModel3d) Load(MString word, GlobalParam g, int resolution = 8)
         {
             List<float> list = new List<float>();
             List<float> branchList3D = new List<float>();
@@ -17,8 +93,6 @@ namespace LSystem
 
             List<float> leafVertexList3D = new List<float>();
             List<float> leafTexCoordList3D = new List<float>();
-
-            float maxCircumference = 2.0f * 3.141502f * rootThick;
 
             // 문자열을 순회하면서 경로를 만든다.
             Stack<Pose> stack = new Stack<Pose>();
@@ -34,7 +108,7 @@ namespace LSystem
             string branchContext = "";
 
             int idx = 0;
-            float thick = rootThick;
+            float thick = 2.0f * GetRootStemRadius(word);
             float branchLength = 1.0f;
 
             // 한 글자마다 탐색함.
@@ -60,7 +134,7 @@ namespace LSystem
 
                 if (c.Alphabet == "F")
                 {
-                    float r = c[0];
+                    float r = c[0] * LSystemUnif.RandomVertex2f.x;
                     Vertex3f start = pose.Postiton;
                     Vertex3f end = start + forward * r;
                     branchContext += c.Alphabet;
@@ -75,7 +149,6 @@ namespace LSystem
 
                     (float[] res, Vertex3f[] rot) = LoadBranch(baseVertor, start, end, thick, false);
                     branchList3D.AddRange(res);
-
 
                     //branchLength, thick
                     float uvUnit = 1 / (float)(baseVertor.Length);
@@ -124,46 +197,9 @@ namespace LSystem
                 }
                 else if (c.Alphabet == "A")
                 {
-                    Vertex3f[] p = new Vertex3f[6];
-                    p[0] = new Vertex3f(-1, 0, -1);
-                    p[1] = new Vertex3f(1, 0, -1);
-                    p[2] = new Vertex3f(1, 0, 1);
-                    p[3] = new Vertex3f(-1, 0, -1);
-                    p[4] = new Vertex3f(1, 0, 1);
-                    p[5] = new Vertex3f(-1, 0, 1);
-
-                    Matrix3x3f localRot = ((Matrix3x3f)pose.Quaternion);
-                    for (int i = 0; i < 6; i++)
-                    {
-                        Vertex3f leafPos = localRot * (p[i] * branchLength * 0.5f)  + pose.Postiton * 0.01f;
-                        leafVertexList3D.Add(leafPos.x);
-                        leafVertexList3D.Add(leafPos.y);
-                        leafVertexList3D.Add(leafPos.z);
-                    }
-
-                    leafTexCoordList3D.Add(0); leafTexCoordList3D.Add(0);
-                    leafTexCoordList3D.Add(1); leafTexCoordList3D.Add(0);
-                    leafTexCoordList3D.Add(0); leafTexCoordList3D.Add(1);
-                    leafTexCoordList3D.Add(0); leafTexCoordList3D.Add(1);
-                    leafTexCoordList3D.Add(1); leafTexCoordList3D.Add(0);
-                    leafTexCoordList3D.Add(1); leafTexCoordList3D.Add(1);
-
-                    localRot = ((Matrix3x3f)pose.Quaternion.Concatenate(Vertex3f.UnitZ.Rotate(90)));
-                    for (int i = 0; i < 6; i++)
-                    {
-                        Vertex3f leafPos = localRot * (p[i] * branchLength * 0.3f) + pose.Postiton * 0.01f;
-                        leafVertexList3D.Add(leafPos.x);
-                        leafVertexList3D.Add(leafPos.y);
-                        leafVertexList3D.Add(leafPos.z);
-                    }
-
-                    leafTexCoordList3D.Add(0.0f); leafTexCoordList3D.Add(0.0f);
-                    leafTexCoordList3D.Add(1.0f); leafTexCoordList3D.Add(0.0f);
-                    leafTexCoordList3D.Add(1.0f); leafTexCoordList3D.Add(1.0f);
-                    leafTexCoordList3D.Add(0.0f); leafTexCoordList3D.Add(0.0f);
-                    leafTexCoordList3D.Add(1.0f); leafTexCoordList3D.Add(1.0f);
-                    leafTexCoordList3D.Add(0.0f); leafTexCoordList3D.Add(1.0f);
-
+                    CreateLeaf(g, pose, branchLength, out List<float> leafVertices, out List<float> leafTexCoords);
+                    leafVertexList3D.AddRange(leafVertices.ToArray());
+                    leafTexCoordList3D.AddRange(leafTexCoords.ToArray());
                 }
                 else if (c.Alphabet == "+")
                 {
