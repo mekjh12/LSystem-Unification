@@ -1,12 +1,44 @@
 ﻿using OpenGL;
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 
 namespace LSystem
 {
     static class Extension
     {
+        public static Vertex3f Forward(this Pose pose)
+        {
+            Matrix4x4f matQuaternion = (Matrix4x4f)pose.Matrix4x4f;
+            return matQuaternion.ForwardVector();
+        }
+
+        public static Vertex3f Up(this Pose pose)
+        {
+            Matrix4x4f matQuaternion = (Matrix4x4f)pose.Matrix4x4f;
+            return matQuaternion.UpVector();
+        }
+
+        public static Vertex3f Left(this Pose pose)
+        {
+            Matrix4x4f matQuaternion = (Matrix4x4f)pose.Matrix4x4f;
+            return matQuaternion.LeftVector();
+        }
+
+        public static void Add(this List<float> list, Vertex3f vertex)
+        {
+            list.Add(vertex.x);
+            list.Add(vertex.y);
+            list.Add(vertex.z);
+        }
+
+        public static void Add(this List<float> list, Vertex2f vertex)
+        {
+            list.Add(vertex.x);
+            list.Add(vertex.y);
+        }
+
         private static float DegreeToRadian = (float)Math.PI / 180.0f;
         private static float RadianToDegree = 180.0f / (float)Math.PI;
 
@@ -263,16 +295,6 @@ namespace LSystem
                 }
             }
             return q;
-        }
-
-        public static string String(this Stack<string> stack)
-        {
-            string txt = "";
-            foreach (string item in stack)
-            {
-                txt += item;
-            }
-            return txt;
         }
 
         public static string String(this Stack<MChar> stack)

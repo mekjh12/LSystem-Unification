@@ -19,7 +19,7 @@ namespace LSystem
             vbo = StoreDataInAttributeList(0, 3, positions);
             Gl.BindVertexArray(0);
 
-            RawModel3d rawModel = new RawModel3d(vao, positions);
+            RawModel3d rawModel = new RawModel3d(vao, positions, 3, 0);
             return rawModel;
         }
 
@@ -85,7 +85,7 @@ namespace LSystem
             vbo = StoreDataInAttributeList(4, 4, bitangents);
             Gl.BindVertexArray(0);
 
-            RawModel3d rawModel = new RawModel3d(vao, positions);
+            RawModel3d rawModel = new RawModel3d(vao, positions, 3, 0);
             return rawModel;
         }
 
@@ -210,7 +210,7 @@ namespace LSystem
 
             Gl.BindVertexArray(0);
 
-            RawModel3d rawModel = new RawModel3d(vao, positions);
+            RawModel3d rawModel = new RawModel3d(vao, positions, 3, 0);
             return rawModel;
 
             float[] TextureCoordination(float tu, float tv)
@@ -356,7 +356,7 @@ namespace LSystem
 
             Gl.BindVertexArray(0);
 
-            RawModel3d rawModel = new RawModel3d(vao, positions);
+            RawModel3d rawModel = new RawModel3d(vao, positions, 3, 0);
             return rawModel;
         }
 
@@ -510,7 +510,7 @@ namespace LSystem
                 return vertices;
             }
 
-            return new RawModel3d(vao, positions);
+            return new RawModel3d(vao, positions, 3, 0);
         }
 
         /// <summary>

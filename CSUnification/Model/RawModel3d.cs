@@ -8,13 +8,18 @@ namespace LSystem
         uint _vao;
         uint _vbo;
         uint _ibo;
-        int _indexCount;
-        int _vertexCount;
-        bool _isDrawElement;
+        protected int _indexCount;
+        protected int _vertexCount;
+        protected bool _isDrawElement;
+
 
         Vertex3f[] _vertices;
 
-        public bool IsDrawElement => _isDrawElement;
+        public bool IsDrawElement
+        {
+            get => _isDrawElement;
+            set => _isDrawElement = value;
+        }
 
         public Vertex3f[] Vertices => _vertices;
 
@@ -24,7 +29,11 @@ namespace LSystem
 
         public uint IBO => _ibo;
 
-        public int IndicesCount => _indexCount;
+        public int IndexCount
+        {
+            get => _indexCount;
+            set => _indexCount = value;
+        }
 
         public int VertexCount
         {
@@ -40,47 +49,27 @@ namespace LSystem
             _vertices = vertices;
         }
 
-        public RawModel3d(float[] positions)
-        {
-            // VAO, VBO 생성
-            _vao = Gl.GenVertexArray();
-            Gl.BindVertexArray(_vao);
-            _vbo = StoreDataInAttributeList(0, 3, positions);
-            Gl.BindVertexArray(0);
-
-            // 기본 정보을 개체에 가져옴.
-            _vertices = GetVertexArray(positions);
-            _isDrawElement = false;
-        }
-
-        public RawModel3d(float[] positions, float[] normals)
-        {
-            // VAO, VBO 생성
-            _vao = Gl.GenVertexArray();
-            Gl.BindVertexArray(_vao);
-            _vbo = StoreDataInAttributeList(0, 3, positions);
-            Gl.BindVertexArray(0);
-
-            // 기본 정보을 개체에 가져옴.
-            _vertices = GetVertexArray(positions);
-            _isDrawElement = false;
-        }
-
         /// <summary>
         /// 생성자
         /// </summary>
         /// <param name="vao"></param>
         /// <param name="positions"></param>
-        public RawModel3d(uint vao, float[] positions)
+        public RawModel3d(uint vao, float[] positions, int stride, int indexCount)
         {
             _isDrawElement = false;
             _vao = vao;
-            _vertexCount = positions.Length / 3;
+            _vertexCount = positions.Length / stride;
             _vertices = new Vertex3f[_vertexCount];
+
+            if (indexCount > 0)
+            {
+                _indexCount = indexCount;
+                _isDrawElement = true;
+            }
 
             for (int i = 0; i < _vertexCount; i++)
             {
-                _vertices[i] = new Vertex3f(positions[3 * i + 0], positions[3 * i + 1], positions[3 * i + 2]);
+                _vertices[i] = new Vertex3f(positions[stride * i + 0], positions[stride * i + 1], positions[stride * i + 2]);
             }
         }
 

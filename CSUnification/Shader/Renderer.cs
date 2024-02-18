@@ -1,4 +1,5 @@
 ﻿using OpenGL;
+using System;
 
 namespace LSystem
 {
@@ -21,11 +22,11 @@ namespace LSystem
             Gl.BindVertexArray(entity.Model.VAO);
             Gl.EnableVertexAttribArray(0);
             Gl.EnableVertexAttribArray(1);
-            Gl.EnableVertexAttribArray(2);
+            //Gl.EnableVertexAttribArray(2);
 
+            shader.LoadIsTextured(entity.IsTextured);
             if (entity.IsTextured)
             {
-                shader.LoadIsTextured(true);
                 TexturedModel modelTextured = entity.Model as TexturedModel;
                 shader.SetInt("modelTexture", 0);
                 Gl.ActiveTexture(TextureUnit.Texture0);
@@ -34,7 +35,15 @@ namespace LSystem
                 Gl.TexParameteri(TextureTarget.Texture2d, TextureParameterName.TextureWrapT, Gl.REPEAT);
             }
 
-            if (entity.Material != null) shader.LoadObjectColor(entity.Material.Ambient);
+            if (entity.Material != null)
+            {
+                shader.LoadObjectColor(entity.Material.Ambient);
+            }
+            else
+            {
+                shader.LoadObjectColor(Vertex4f.One);
+            }
+
             shader.LoadProjMatrix(camera.ProjectiveMatrix);
             shader.LoadViewMatrix(camera.ViewMatrix);
             shader.LoadModelMatrix(entity.ModelMatrix);
@@ -42,9 +51,16 @@ namespace LSystem
             float lineWidth = (entity.PrimitiveType == PrimitiveType.Lines)?entity.LineWidth: 1.0f;
             Gl.LineWidth(lineWidth);
 
-            Gl.DrawArrays(entity.PrimitiveType, 0, entity.Model.VertexCount);
+            if (entity.Model.IsDrawElement)
+            {
+                Gl.DrawElements(entity.PrimitiveType, entity.Model.IndexCount, DrawElementsType.UnsignedInt, IntPtr.Zero);
+            }
+            else
+            {
+                Gl.DrawArrays(entity.PrimitiveType, 0, entity.Model.VertexCount);
+            }
 
-            Gl.DisableVertexAttribArray(2);
+            //Gl.DisableVertexAttribArray(2);
             Gl.DisableVertexAttribArray(1);
             Gl.DisableVertexAttribArray(0);
             Gl.BindVertexArray(0);

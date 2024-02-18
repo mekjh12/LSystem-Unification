@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Windows.Forms;
@@ -61,7 +62,6 @@ namespace LSystem
 
             SyncControlFirst();
 
-
             // ### 업데이트 ###
             _gameLoop.UpdateFrame = (deltaTime) =>
             {
@@ -96,10 +96,12 @@ namespace LSystem
                 Gl.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
 
                 Gl.PolygonMode(MaterialFace.FrontAndBack, _polygonMode);
+
                 foreach (Entity entity in entities)
                 {
                     Renderer.Render(_shader, entity, camera);
                 }
+
             };
         }
 
@@ -201,7 +203,7 @@ namespace LSystem
                 entities.Clear();
                 entities.Add(ent);
                 MString sentence = CreateTree();
-                LoadEntity(sentence, _lSystem.GlobalParameter, _leafFileName, _stemFileName);
+                LoadEntity(sentence, LSystemUnif.GlobalParameter, _leafFileName, _stemFileName);
             }
         }
         
@@ -223,27 +225,43 @@ namespace LSystem
             _lSystem.AddParameter("e", tbBendingConstant.Value * 0.01f);
             _lSystem.AddParameter("leafHeight", tbLeafHeight.Value * 0.01f);
             _lSystem.AddParameter("leafWidth", tbLeafWidth.Value * 0.01f);
-            _lSystem.AddParameter("leafRotCount", (float)nmLeafRotCount.Value);            
+            _lSystem.AddParameter("leafRotCount", (float)nmLeafRotCount.Value);
+
+            _lSystem.AddParameter("rootThickRatio", 2.0f);
+            _lSystem.AddParameter("accident", 0.1f);
+            _lSystem.AddParameter("incident", 0.1f);
         }
 
         public MString CreateTree()
         {
+            _lSystem = new LSystemUnif(_rnd);
+
             LoadGlobalParameter();
 
-            float d1 = _lSystem.GlobalParameter["d1"];
-            float d2 = _lSystem.GlobalParameter["d2"];
-            float a = _lSystem.GlobalParameter["a"];
-            float lr = _lSystem.GlobalParameter["lr"];
-            float vr = _lSystem.GlobalParameter["vr"];
+            float lr = LSystemUnif.GlobalParameter["lr"];
+            float vr = LSystemUnif.GlobalParameter["vr"];
 
             MString axiom = (MString)this.textBox1.Text;
 
             _lSystem.AddRule(ProductionNumber.P1, "A", varCount: 0,
                 condition: (t, p, n) => true,
                 func: (MChar t, MChar p, MChar n, GlobalParam g) =>
-                (MString)$"!({vr})F(50)[&({a})F(50)A]" +
-                (MString)$"/({d1})[&({a})F(50)A]" +
-                (MString)$"/({d2})[&({a})F(50)A]");
+                (MString)$"!(<vr>)F(50)[&(<a>)F(50)A]/(<d1>)[&(<a>)F(50)A]/(<d2>)[&(<a>)F(50)A]", probability: 1.9f);
+
+            _lSystem.AddRule(ProductionNumber.P1, "A", varCount: 0,
+                condition: (t, p, n) => true,
+                func: (MChar t, MChar p, MChar n, GlobalParam g) =>
+                (MString)$"!(<vr>)F(50)[&(<a>)F(50)]/(<d1>)[&(<a>)F(50)A]/(<d2>)[&(<a>)F(50)]", probability: 0.1f);
+
+            _lSystem.AddRule(ProductionNumber.P1, "A", varCount: 0,
+                condition: (t, p, n) => true,
+                func: (MChar t, MChar p, MChar n, GlobalParam g) =>
+                (MString)$"!(<vr>)F(50)[&(<a>)F(50)]/(<d1>)[&(<a>)F(50)A]/(<d2>)[&(<a>)F(50)A]", probability: 0.1f);
+
+            _lSystem.AddRule(ProductionNumber.P1, "A", varCount: 0,
+                condition: (t, p, n) => true,
+                func: (MChar t, MChar p, MChar n, GlobalParam g) =>
+                (MString)$"!(<vr>)F(50)[&(<a>)F(50)]/(<d1>)[&(<a>)F(50)]/(<d2>)[&(<a>)F(50)]", probability: 0.1f);
 
             _lSystem.AddRule(ProductionNumber.P2, "F", varCount: 1,
                 condition: (t, p, n) => true,
@@ -261,9 +279,10 @@ namespace LSystem
 
         private void LoadEntity(MString sentence, GlobalParam globalParam, string leafFileName, string stemFileName)
         {
-            (RawModel3d branch, RawModel3d leaf) = TreeLoader.Load(sentence, globalParam);
-            TexturedModel tree = new TexturedModel(branch, new Texture(EngineLoop.PROJECT_PATH + "\\Res\\" + stemFileName));
-            TexturedModel leafModel = new TexturedModel(leaf, new Texture(EngineLoop.PROJECT_PATH + "\\Res\\" + leafFileName));
+            (RawModel3d branch, RawModel3d leaf) = TreeLoader.Load(sentence, scaled: 0.01f, 
+                objfilename: EngineLoop.PROJECT_PATH + $"\\Res\\{this.tbName.Text}.obj", resolution: (int)nbrResolution.Value);
+            TexturedModel tree = new TexturedModel(branch, new Texture(EngineLoop.PROJECT_PATH + "\\Res\\" + stemFileName));            
+            TexturedModel leafs = new TexturedModel(leaf, new Texture(EngineLoop.PROJECT_PATH + "\\Res\\" + leafFileName));
 
             Vertex3f f = _gameLoop.Camera.Forward;
             Vertex3f p =_gameLoop.Camera.Position;
@@ -274,7 +293,7 @@ namespace LSystem
             e1.Position = pos;
             entities.Add(e1);
 
-            Entity e2 = new Entity(leafModel, PrimitiveType.Triangles);
+            Entity e2 = new Entity(leafs, PrimitiveType.Triangles);
             e2.IsTextured = true;
             e2.Position = pos;
             entities.Add(e2);
@@ -312,7 +331,7 @@ namespace LSystem
                 LoadGlobalParameter();
                 MString sentence = (MString)File.ReadAllText(this.openFileDialog1.FileName);
                 Console.WriteLine("result=" + sentence);
-                LoadEntity(sentence, _lSystem.GlobalParameter, _leafFileName, _stemFileName);
+                LoadEntity(sentence, LSystemUnif.GlobalParameter, _leafFileName, _stemFileName);
                 EngineLoop.ShowCursor(true);
             }
         }
@@ -321,6 +340,7 @@ namespace LSystem
         {
             EngineLoop.ShowCursor(true);
             this.saveFileDialog1.InitialDirectory = EngineLoop.PROJECT_PATH + "\\Res\\";
+            this.saveFileDialog1.FileName = this.tbName.Text;
             this.saveFileDialog1.Filter = "code(*.code)|*.code";
             if (this.saveFileDialog1.ShowDialog() == DialogResult.OK)
             {
@@ -333,7 +353,8 @@ namespace LSystem
         private void btnCreate_Click(object sender, EventArgs e)
         {
             MString sentence = CreateTree();
-            LoadEntity(sentence, _lSystem.GlobalParameter, _leafFileName, _stemFileName);
+            //sentence = (MString)"!(5)F(15)F(25)[&(45)F(35)A][&(-90)F(35)A]";
+            LoadEntity(sentence, LSystemUnif.GlobalParameter, _leafFileName, _stemFileName);
         }
 
         private void tbDivergenceAngle1_Scroll(object sender, EventArgs e)
@@ -407,6 +428,16 @@ namespace LSystem
             IniFile.WritePrivateProfileString("globalParam", "Step", (int)this.nbrStep.Value);
         }
 
+        private void nbrResolution_ValueChanged(object sender, EventArgs e)
+        {
+            IniFile.WritePrivateProfileString("globalParam", "Resolution", (int)this.nbrResolution.Value);
+        }
+
+        private void tbName_TextChanged(object sender, EventArgs e)
+        {
+            IniFile.WritePrivateProfileString("globalParam", "name", this.tbName.Text);
+        }
+
         private void SyncControlFirst()
         {
             string initDirectory = EngineLoop.PROJECT_PATH + "\\Res\\";
@@ -417,6 +448,7 @@ namespace LSystem
             if (File.Exists(leafFileName)) this.pictureBox1.Image = Bitmap.FromFile(leafFileName);
             if (File.Exists(stemFileName)) this.pictureBox2.Image = Bitmap.FromFile(stemFileName);
             nbrStep.Value = (int)IniFile.GetPrivateProfileFloat("globalParam", "Step", 5);
+            nbrResolution.Value = (int)IniFile.GetPrivateProfileFloat("globalParam", "Resolution", 5);
             caTrophism.Value = (int)IniFile.GetPrivateProfileFloat("globalParam", "Trophism", 45);
             tbWidthIncreaseRate.Value = (int)IniFile.GetPrivateProfileFloat("globalParam", "WidthIncreaseRate", 1000);
             tbElongationRate.Value = (int)IniFile.GetPrivateProfileFloat("globalParam", "ElongationRate", 1000);
@@ -428,6 +460,7 @@ namespace LSystem
             tbLeafWidth.Value = (int)IniFile.GetPrivateProfileFloat("globalParam", "leafWidth", 100);
             tbLeafHeight.Value = (int)IniFile.GetPrivateProfileFloat("globalParam", "leafHeight", 100);
             nmLeafRotCount.Value = (int)IniFile.GetPrivateProfileFloat("globalParam", "leafRotCount", 3);
+            tbName.Text = IniFile.GetPrivateProfileString("globalParam", "name", "");
             RefreshControl();
         }
 
@@ -442,6 +475,7 @@ namespace LSystem
             tbVectorLength_Scroll(null, null);
             tbLeafWidth_Scroll(null, null);
             tbLeafHeight_Scroll(null, null);
+            nbrResolution_ValueChanged(null, null);
         }
 
         private void btnRandom_Click(object sender, EventArgs e)
@@ -478,6 +512,45 @@ namespace LSystem
                 _stemFileName = this.openFileDialog1.FileName.Replace(this.openFileDialog1.InitialDirectory, "");
                 this.pictureBox2.Image = Bitmap.FromFile(this.openFileDialog1.FileName);
                 IniFile.WritePrivateProfileString("globalParam", "stemImage", _stemFileName);
+            }
+        }
+
+        private void btnSave_Click(object sender, EventArgs e)
+        {
+            this.saveFileDialog1.InitialDirectory = EngineLoop.PROJECT_PATH + "\\Res\\";
+            this.saveFileDialog1.Filter = "png(*.png)|*.png";
+            this.saveFileDialog1.FileName = tbName.Text + ".png";
+            if (this.saveFileDialog1.ShowDialog() == DialogResult.OK)
+            {
+                SaveTexture(this.saveFileDialog1.FileName);
+                MessageBox.Show($"{this.saveFileDialog1.FileName}를 저장하였습니다.");
+                EngineLoop.ShowCursor(true);
+            }
+        }
+
+
+        private void SaveTexture(string dstFilename)
+        {
+            Bitmap source1 = (Bitmap)this.pictureBox2.Image;
+            Bitmap source2 = (Bitmap)this.pictureBox1.Image;
+
+            int w = Math.Min(source1.Width, source2.Width);
+            int h = Math.Min(source1.Height, source2.Height);
+
+            source1 = Resize(source1, w, h);
+            source2 = Resize(source2, w, h);
+
+            var target = new Bitmap(2 * w, source1.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            var graphics = Graphics.FromImage(target);
+            graphics.CompositingMode = CompositingMode.SourceOver; // this is the default, but just to be clear
+            graphics.DrawImage(source1, 0, 0);
+            graphics.DrawImage(source2, w, 0);
+            target.Save(dstFilename, ImageFormat.Png);
+
+            Bitmap Resize(Bitmap sourceImage, int width, int height)
+            {
+                Size resize = new Size(width, height);
+                return new Bitmap(sourceImage, resize);
             }
         }
 

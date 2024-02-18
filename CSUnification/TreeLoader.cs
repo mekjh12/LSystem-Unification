@@ -1,24 +1,24 @@
 ﻿using OpenGL;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel.Design.Serialization;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Drawing;
+using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
+using System.IO;
+using System.Reflection;
 
 namespace LSystem
 {
     public class TreeLoader
     {
-        private static float GetRootStemRadius(MString word)
+        private static void GetTreeInfo(MString word, out float rootThick, out int maxDepth)
         {
-            // 문자열을 순회하면서 경로를 만든다.
-            Stack<float> thickStack = new Stack<float>();
-
-            int idx = 0;
-            float thick = 0.0f;
+            rootThick = 0.0f;
+            maxDepth = 0;
 
             // 한 글자마다 탐색함.
+            int idx = 0;
+            Stack<float> thickStack = new Stack<float>();
             while (idx < word.Length)
             {
                 if (word.Length == 0) break;
@@ -26,147 +26,156 @@ namespace LSystem
 
                 if (c.Alphabet == "!")
                 {
-                    thick = c[0];
+                    rootThick = c[0];
                 }
                 else if (c.Alphabet == "[")
                 {
-                    thickStack.Push(thick);
+                    thickStack.Push(rootThick);
+                    maxDepth = Math.Max(maxDepth, thickStack.Count); 
                 }
                 else if (c.Alphabet == "]")
                 {
-                    thick = thickStack.Pop();
+                    rootThick = thickStack.Pop();
                 }
 
                 idx++;
             }
-
-            return thick;
         }
 
-        private static void CreateLeaf(GlobalParam g, Pose pose, float branchLength, out List<float> leafVertexList3D, out List<float> leafTexCoordList3D)
+        private static void CreateLeaf(Pose pose, uint baseIndex, float scaled, float branchLength, out List<float> leafVertexList3D, out List<uint> leafIndices)
         {
+            GlobalParam g = LSystemUnif.GlobalParameter;
+
             leafVertexList3D = new List<float>();
-            leafTexCoordList3D = new List<float>();
+            leafIndices = new List<uint>();
 
             float leafWidth = g.ContainsKey("leafWidth") ? g["leafWidth"] : 1.0f;
             float leafHeight = g.ContainsKey("leafHeight") ? g["leafHeight"] : 1.0f;
 
-            Vertex3f[] p = new Vertex3f[6];
-            p[0] = new Vertex3f(-leafWidth, 0, -1);
-            p[1] = new Vertex3f(leafWidth, 0, -1);
+            Vertex3f[] p = new Vertex3f[4];
+            p[0] = new Vertex3f(-leafWidth, 0, 0);
+            p[1] = new Vertex3f(leafWidth, 0, 0);
             p[2] = new Vertex3f(leafWidth, 0, leafHeight);
-            p[3] = new Vertex3f(-leafWidth, 0, -1);
-            p[4] = new Vertex3f(leafWidth, 0, leafHeight);
-            p[5] = new Vertex3f(-leafWidth, 0, leafHeight);
+            p[3] = new Vertex3f(-leafWidth, 0, leafHeight);
 
-            int leafRotCount = (int)g["leafRotCount"];
+            int leafRotCount = g.ContainsKey("leafRotCount") ? (int)g["leafRotCount"] : 1;
             int unitAngle = (int)(180.0f / (float)leafRotCount);
             int angle = 0;
+
+            uint vertexIndex = 0;
+            Vertex2f[] texCoords = new Vertex2f[4] { new Vertex2f(1, 1), new Vertex2f(0, 1), new Vertex2f(0, 0), new Vertex2f(1, 0)};
+
+            Vertex3f forward = pose.Forward().Normalized;
+
             for (int n = 0; n < leafRotCount; n++)
             {
-                Matrix3x3f localRot = ((Matrix3x3f)pose.Quaternion.Concatenate(Vertex3f.UnitZ.Rotate(angle)));
+                Matrix3x3f localRot = ((Matrix3x3f)forward.Rotate(angle).Concatenate(pose.Quaternion)); // 순서중요
+                Matrix3x3f localScale = Matrix3x3f.Scaled(1, 1, scaled*branchLength);
+
                 angle += unitAngle;
 
-                for (int i = 0; i < 6; i++)
+                for (int i = 0; i < p.Length; i++)
                 {
-                    Vertex3f leafPos = localRot * (p[i] * branchLength * 0.5f) + pose.Postiton * 0.01f;
-                    leafVertexList3D.Add(leafPos.x);
-                    leafVertexList3D.Add(leafPos.y);
-                    leafVertexList3D.Add(leafPos.z);
+                    Vertex3f leafPos = localRot * localScale * (p[i]) + pose.Postiton * scaled;
+                    leafVertexList3D.Add(leafPos);
+                    leafVertexList3D.Add(texCoords[i]);
                 }
 
-                leafTexCoordList3D.Add(1); leafTexCoordList3D.Add(1);
-                leafTexCoordList3D.Add(0); leafTexCoordList3D.Add(1);
-                leafTexCoordList3D.Add(0); leafTexCoordList3D.Add(0);
-                leafTexCoordList3D.Add(1); leafTexCoordList3D.Add(1);
-                leafTexCoordList3D.Add(0); leafTexCoordList3D.Add(0);
-                leafTexCoordList3D.Add(1); leafTexCoordList3D.Add(0);
+                leafIndices.Add(baseIndex + vertexIndex + 0);
+                leafIndices.Add(baseIndex + vertexIndex + 1);
+                leafIndices.Add(baseIndex + vertexIndex + 2);
+                leafIndices.Add(baseIndex + vertexIndex + 0);
+                leafIndices.Add(baseIndex + vertexIndex + 2);
+                leafIndices.Add(baseIndex + vertexIndex + 3);
+                vertexIndex += 4;
             }
-
         }
 
-        public static (RawModel3d, RawModel3d) Load(MString word, GlobalParam g, int resolution = 8)
+        public static (RawModel3d, RawModel3d) Load(MString sentence, float scaled, string objfilename = "", int resolution = 8)
         {
-            List<float> list = new List<float>();
-            List<float> branchList3D = new List<float>();
-            List<float> branchTexcoord = new List<float>();
+            GlobalParam g = LSystemUnif.GlobalParameter;
 
+            // 모델 저장을 위한 리스트
+            List<float> branchList3D = new List<float>();
+            List<uint> branchIndices = new List<uint>();
             List<float> leafVertexList3D = new List<float>();
-            List<float> leafTexCoordList3D = new List<float>();
+            List<uint> leafIndices = new List<uint>();
 
             // 문자열을 순회하면서 경로를 만든다.
             Stack<Pose> stack = new Stack<Pose>();
-            Pose pose = new Pose(Quaternion.Identity, Vertex3f.Zero);
             Stack<float> thickStack = new Stack<float>();
-
-            // 줄기의 밑둥의 큰 원이다.
-            Vertex3f[] baseVertor = null;
-            Stack<Vertex3f[]> branchBaseStack = new Stack<Vertex3f[]>();
+            Pose pose = new Pose(Quaternion.Identity, Vertex3f.Zero);
 
             // context-sensitive를 위한 설정
             Stack<string> contextStack = new Stack<string>();
             string branchContext = "";
 
+            // 나무의 기본정보를 가져온다.
+            GetTreeInfo(sentence, out float thick, out int maxDepth);
+
+            // 줄기의 밑둥의 큰 원을 만든다.
+            float rootThickRatio = g.ContainsKey("rootThickRatio") ? g["rootThickRatio"] : 1.0f;
+            float radius = rootThickRatio * thick; // base Root Thick
+            Vertex3f[] baseVertor = new Vertex3f[resolution + 1];
+            float unitTu = 1.0f / resolution;
+            float unitTheta = 360 / resolution;
+            for (int i = 0; i <= resolution; i++)
+            {
+                Vertex3f p = Vertex3f.UnitZ.Rotate(Vertex3f.UnitX * radius, i * unitTheta) * scaled;
+                baseVertor[i] = p;
+                branchList3D.Add(p.x);          // x
+                branchList3D.Add(p.y);          // y
+                branchList3D.Add(0);            // z
+                branchList3D.Add(unitTu * i);   // tu
+                branchList3D.Add(0);            // tv
+            }
+            branchList3D.Add(Vertex3f.Zero);
+            branchList3D.Add(Vertex2f.Zero);
+
+            // 줄기의 밑둥의 큰 원이다.
+            Stack<Vertex3f[]> branchBaseStack = new Stack<Vertex3f[]>();
+            Stack<uint> baseIndexStack = new Stack<uint>();
+            Stack<uint> depthStack = new Stack<uint>();
+            baseIndexStack.Push(0);
+
             int idx = 0;
-            float thick = 2.0f * GetRootStemRadius(word);
             float branchLength = 1.0f;
+            uint baseIndex = 0;
+            uint parentIndex = 0;
+            uint depth = 0;
+            uint circularVertexCount = (uint)resolution + 2;
 
             // 한 글자마다 탐색함.
-            while (idx < word.Length)
+            while (idx < sentence.Length)
             {
-                if (word.Length == 0) break;
-                MChar c = word[idx];
-                Matrix4x4f matQuaternion = (Matrix4x4f)pose.Matrix4x4f;
-                Vertex3f forward = matQuaternion.ForwardVector();
-                Vertex3f up = matQuaternion.UpVector();
-                Vertex3f left = matQuaternion.LeftVector();
+                if (sentence.Length == 0) break;
+                MChar c = sentence[idx];
 
-                if (baseVertor == null)
-                {
-                    baseVertor = new Vertex3f[resolution];
-                    float radius = thick;
-                    float unitTheta = 360 / baseVertor.Length;
-                    for (int i = 0; i < baseVertor.Length; i++)
-                    {
-                        baseVertor[i] = Vertex3f.UnitZ.Rotate(Vertex3f.UnitX * radius, i * unitTheta);
-                    }
-                }
+                Vertex3f forward = pose.Forward();
+                Vertex3f up = pose.Up();
+                Vertex3f left = pose.Left();
+                Vertex3f start = pose.Postiton;
+
+                float angle = c.Length > 0 ? c[0] : 0.0f;
 
                 if (c.Alphabet == "F")
                 {
-                    float r = c[0] * LSystemUnif.RandomVertex2f.x;
-                    Vertex3f start = pose.Postiton;
+                    float r = c[0];
                     Vertex3f end = start + forward * r;
                     branchContext += c.Alphabet;
-                    branchLength = forward.Norm();
+                    branchLength = r;
+                    baseIndex += circularVertexCount ;
 
-                    list.Add(start.x);
-                    list.Add(start.y);
-                    list.Add(start.z);
-                    list.Add(end.x);
-                    list.Add(end.y);
-                    list.Add(end.z);
+                    LoadBranch(parentIndex, baseIndex, depth, scaled, baseVertor, start, end, thick,
+                        out float[] data, out uint[] indices, out Vertex3f[] q);
+                    parentIndex = baseIndex;
 
-                    (float[] res, Vertex3f[] rot) = LoadBranch(baseVertor, start, end, thick, false);
-                    branchList3D.AddRange(res);
-
-                    //branchLength, thick
-                    float uvUnit = 1 / (float)(baseVertor.Length);
-                    float uv = 0.0f;
-                    for (int i = 0; i < baseVertor.Length; i++)
-                    {
-                        branchTexcoord.Add(uv); branchTexcoord.Add(0.0f);
-                        branchTexcoord.Add(uv + uvUnit); branchTexcoord.Add(0.0f);
-                        branchTexcoord.Add(uv); branchTexcoord.Add(1.0f);
-                        branchTexcoord.Add(uv); branchTexcoord.Add(1.0f);
-                        branchTexcoord.Add(uv + uvUnit); branchTexcoord.Add(0.0f);
-                        branchTexcoord.Add(uv + uvUnit); branchTexcoord.Add(1.0f);
-                        uv += uvUnit;
-                    }
-
-                    baseVertor = rot;
-
+                    baseVertor = q;
                     pose.Postiton = end;
+
+                    branchList3D.AddRange(data);
+                    branchIndices.AddRange(indices);
+                    depth++;
 
                     // tropism vector modify!
                     Vertex3f H = forward;
@@ -178,57 +187,37 @@ namespace LSystem
                     Vertex3f L1 = H1.Cross(T).Normalized;
                     Vertex3f U1 = H1.Cross(L1).Normalized;
                     pose.Quaternion = Matrix3x3f.Identity.ToQuaternionFromTNB(L1, U1, H1);
-                }
-                else if (c.Alphabet == "f")
-                {
-                    float r = c[0];
-                    Vertex3f start = pose.Postiton;
-                    Vertex3f end = start + forward * r;
-                    branchContext += c.Alphabet;
 
-                    list.Add(start.x);
-                    list.Add(start.y);
-                    list.Add(start.z);
-                    list.Add(end.x);
-                    list.Add(end.y);
-                    list.Add(end.z);
-
-                    pose.Postiton = end;
                 }
                 else if (c.Alphabet == "A")
                 {
-                    CreateLeaf(g, pose, branchLength, out List<float> leafVertices, out List<float> leafTexCoords);
+                    uint baseTriangleIndex = (uint)((leafVertexList3D.Count / 5));
+                    CreateLeaf(pose, baseTriangleIndex, scaled, branchLength, out List<float> leafVertices, out List<uint> indices);
                     leafVertexList3D.AddRange(leafVertices.ToArray());
-                    leafTexCoordList3D.AddRange(leafTexCoords.ToArray());
+                    leafIndices.AddRange(indices);
                 }
                 else if (c.Alphabet == "+")
                 {
-                    float angle = c[0];
                     pose.Quaternion = up.Rotate(angle).Concatenate(pose.Quaternion);
                 }
                 else if (c.Alphabet == "-")
                 {
-                    float angle = c[0];
                     pose.Quaternion = up.Rotate(-angle).Concatenate(pose.Quaternion);
                 }
                 else if (c.Alphabet == "&")
                 {
-                    float angle = c[0];
                     pose.Quaternion = left.Rotate(angle).Concatenate(pose.Quaternion);
                 }
                 else if (c.Alphabet == "^")
                 {
-                    float angle = c[0];
                     pose.Quaternion = left.Rotate(-angle).Concatenate(pose.Quaternion);
                 }
                 else if (c.Alphabet == "\\")
                 {
-                    float angle = c[0];
                     pose.Quaternion = forward.Rotate(angle).Concatenate(pose.Quaternion);
                 }
                 else if (c.Alphabet == "/")
                 {
-                    float angle = c[0];
                     pose.Quaternion = forward.Rotate(-angle).Concatenate(pose.Quaternion);
                 }
                 else if (c.Alphabet == "$")
@@ -247,15 +236,30 @@ namespace LSystem
                 else if (c.Alphabet == "[")
                 {
                     stack.Push(pose);
+                    baseIndexStack.Push(parentIndex);
                     branchBaseStack.Push(baseVertor);
+                    depthStack.Push(depth);
                     thickStack.Push(thick);
                     contextStack.Push(branchContext);
                     branchContext = "";
                 }
                 else if (c.Alphabet == "]")
                 {
+                    // 줄기의 윗면을 닫는다.
+                    for (uint i = 0; i < resolution; i++)
+                    {
+                        uint a = i;
+                        uint b = (uint)((i + 1) % resolution);
+                        branchIndices.Add(baseIndex + (uint)resolution + 1);
+                        branchIndices.Add(baseIndex + a);
+                        branchIndices.Add(baseIndex + b);
+                    }
+
+                    // 스택에서 회복된 부모의 정보를 가져온다.
                     pose = stack.Pop();
+                    parentIndex = baseIndexStack.Pop();
                     baseVertor = branchBaseStack.Pop();
+                    depth = depthStack.Pop();
                     thick = thickStack.Pop();
                     branchContext = contextStack.Pop();
                 }
@@ -263,118 +267,149 @@ namespace LSystem
                 idx++;
             }
 
-            for (int i = 0; i < branchList3D.Count; i++)
+            // raw3d 모델을 만든다.
+            float[] vertices = branchList3D.ToArray();
+            uint[] fIndices = branchIndices.ToArray();
+            int[] splitOpt = new int[] { 3, 2 };
+            uint vao = GpuLoader.LoadData(vertices, splitOpt, fIndices, BufferUsage.StaticDraw);
+            RawModel3d rawModel = new RawModel3d(vao, vertices, 5, fIndices.Length);
+            rawModel.IsDrawElement = true;
+
+            vao = GpuLoader.LoadData(leafVertexList3D.ToArray(), new[] { 3, 2 }, leafIndices.ToArray(), BufferUsage.StaticDraw);
+            RawModel3d leafRawModel = new RawModel3d(vao, vertices, 5, fIndices.Length);
+            leafRawModel.IsDrawElement = true;
+
+            // obj 파일을 저장하는 옵션이면 
+            // ---------------------------------------------------------------
+            int stride = 0;
+            for (int i = 0; i < splitOpt.Length; i++) stride += splitOpt[i];
+            int vidx = 0;
+
+            if (objfilename != "")
             {
-                branchList3D[i] = branchList3D[i] * 0.01f;
+                string filename = Path.GetFileNameWithoutExtension(objfilename);
+
+                float[] leaf = leafVertexList3D.ToArray();
+                uint[] leafInds = leafIndices.ToArray();
+                StreamWriter sw = new StreamWriter(objfilename);
+                sw.WriteLine("# WaveFront *.obj file (generated by LSystem)");
+                sw.WriteLine("g Tree_small_1");
+                sw.WriteLine($"mtllib {filename}.mtl");
+                sw.WriteLine($"usemtl {filename}.001");
+
+                sw.WriteLine("# stem");
+
+                for (int i = 0; i < vertices.Length; i += stride) // stem vertices
+                {
+                    sw.WriteLine($"v {vertices[i]} {vertices[i + 2]} {vertices[i + 1]}");
+                    sw.WriteLine($"vt {0.5f * vertices[i + 3]} {1.0f - vertices[i + 4]} 0");
+                    vidx++;
+                }
+
+                sw.WriteLine("# leaf");
+                for (int i = 0; i < leaf.Length; i += stride) // leaf vertices
+                {
+                    sw.WriteLine($"v {leaf[i]} {leaf[i + 2]} {leaf[i + 1]}");
+                    sw.WriteLine($"vt {0.5f + 0.5f * leaf[i + 3]} {1.0f - leaf[i + 4]} 0");
+                }
+
+                for (int i = 0; i < fIndices.Length; i += 3)
+                {
+                    sw.WriteLine($"f {fIndices[i] + 1}/{fIndices[i] + 1} {fIndices[i + 1] + 1}/{fIndices[i + 1] + 1} {fIndices[i + 2] + 1}/{fIndices[i + 2] + 1}");
+                }
+
+                for (int i = 0; i < leafInds.Length; i += 3)
+                {
+                    sw.WriteLine($"f {vidx + leafInds[i] + 1}/{vidx + leafInds[i] + 1} {vidx + leafInds[i + 1] + 1}/{vidx + leafInds[i + 1] + 1} {vidx + leafInds[i + 2] + 1}/{vidx + leafInds[i + 2] + 1}");
+                }
+
+                sw.Close();
+
+                sw = new StreamWriter(Path.GetDirectoryName(objfilename) + $"\\{filename}.mtl");
+                sw.WriteLine($"newmtl {filename}.001");
+                sw.WriteLine("Ns 96.078431");
+                sw.WriteLine("Ka 1.000000 1.000000 1.000000");
+                sw.WriteLine("Kd 0.640000 0.640000 0.640000");
+                sw.WriteLine("Ks 0.000000 0.000000 0.000000");
+                sw.WriteLine("Ke 0.000000 0.000000 0.000000");
+                sw.WriteLine("Ni 1.000000");
+                sw.WriteLine("d 1.000000");
+                sw.WriteLine("illum 2");
+                sw.WriteLine($"map_Kd {filename}.png");
+                sw.Close();
             }
 
-            // raw3d 모델을 만든다.
-            uint vao = Gl.GenVertexArray();
-            Gl.BindVertexArray(vao);
-            uint vbo = StoreDataInAttributeList(0, 3, branchList3D.ToArray());
-            StoreDataInAttributeList(1, 2, branchTexcoord.ToArray());
-            Gl.BindVertexArray(0);
-            RawModel3d rawModel = new RawModel3d(vao, branchList3D.ToArray());
-
-
-            vao = Gl.GenVertexArray();
-            Gl.BindVertexArray(vao);
-            StoreDataInAttributeList(0, 3, leafVertexList3D.ToArray());
-            StoreDataInAttributeList(1, 2, leafTexCoordList3D.ToArray());
-            Gl.BindVertexArray(0);
-            RawModel3d leafRawModel = new RawModel3d(vao, leafVertexList3D.ToArray());
             return (rawModel, leafRawModel);
         }
 
 
         /// <summary>
-        /// 줄기의 모델을 읽어온다.
+        /// 
         /// </summary>
-        /// <param name="startNPolygon">이전 단계의 줄기 윗면의 점들</param>
-        /// <param name="start">줄기의 시작 지점</param>
-        /// <param name="end">줄기가 끝나는 지점</param>
-        /// <param name="ratioThick">줄기의 단면의 반지름의 줄어드는 비율</param>
-        /// <returns></returns>
-        private static (float[], Vertex3f[] endNPolygon) LoadBranch(Vertex3f[] startNPolygon,
-            Vertex3f start, Vertex3f end, float ratioThick, bool isRelativesize)
+        /// <param name="parentIndex"></param>
+        /// <param name="baseIndex"></param>
+        /// <param name="depth"></param>
+        /// <param name="scaled"></param>
+        /// <param name="p"></param>
+        /// <param name="start"></param>
+        /// <param name="end"></param>
+        /// <param name="thick"></param>
+        /// <param name="data"></param>
+        /// <param name="indices"></param>
+        /// <param name="q"></param>
+        public static void LoadBranch(uint parentIndex, uint baseIndex, uint depth, float scaled, Vertex3f[] p, Vertex3f start, Vertex3f end, float thick
+            ,out float[] data, out uint[] indices, out Vertex3f[] q)
         {
-            List<float> positionList = new List<float>();
-            int num = startNPolygon.Length;
-            Vertex3f[] evec = new Vertex3f[num];
+            List<float> vertices = new List<float>();
+            List<uint> indexList = new List<uint>();
 
-            // 이전 단계의 굵기를 계산하여 다음 단계의 굵기를 계산한다.
-            float maxThick = float.MinValue;
-            for (int i = 0; i < startNPolygon.Length; i++)
-            {
-                float d = (startNPolygon[0] - startNPolygon[i]).Norm();
-                maxThick = Math.Max(maxThick, d);
-            }
-            float baseThick = maxThick * 0.5f;
-            float terminalThick = baseThick * ratioThick;
-
+            uint N = (uint)p.Length - 1;
+            q = new Vertex3f[N + 1];
+           
             // 이전 단계의 줄기로 새로운 줄기의 윗면의 점들을 계산한다.
-            Vertex3f s0 = startNPolygon[0];
+            Vertex3f s0 = p[0];
             Vertex3f s = s0 - start;
             Vertex3f f = end - start;
             Vertex3f u = f.Cross(s).Normalized;
             Vertex3f l = u.Cross(f).Normalized;
-            evec[0] = f + l * (ratioThick);
-            float unitDeg = 360.0f / num;
+            q[0] = f + l * (thick);
+            float unitDeg = 360.0f / N;
 
             // 윗면을 만든다.
-            Vertex3f r0 = evec[0];
-            for (int i = 0; i < num; i++)
+            Vertex3f r0 = q[0];
+            for (int i = 0; i <= N; i++)
             {
                 Vertex3f src = f.Rotate(r0, unitDeg * i);
-                evec[i] = src + start;
-            }
+                src += start;
+                q[i] = src;
 
-            // 아랫면과 윗면의 점들로 옆면을 만든다.
-            for (int i = 0; i < num; i++)
+                float tu = (float)i / (float)N;
+                float tv = (depth + 1);
+                vertices.Add(src * scaled); // 3
+                vertices.Add(tu);
+                vertices.Add(-tv);
+            }
+            vertices.Add(end * scaled);
+            vertices.Add(0);
+            vertices.Add(0);
+
+            // indices
+            for (uint i = 0; i < N; i++)
             {
-                positionList.Add(startNPolygon[(i + 0) % num].x);
-                positionList.Add(startNPolygon[(i + 0) % num].y);
-                positionList.Add(startNPolygon[(i + 0) % num].z);
-                positionList.Add(startNPolygon[(i + 1) % num].x);
-                positionList.Add(startNPolygon[(i + 1) % num].y);
-                positionList.Add(startNPolygon[(i + 1) % num].z);
-                positionList.Add(evec[(i + 0) % num].x);
-                positionList.Add(evec[(i + 0) % num].y);
-                positionList.Add(evec[(i + 0) % num].z);
+                uint a = (i + 0);
+                uint b = (i + 1);
 
-                positionList.Add(evec[(i + 0) % num].x);
-                positionList.Add(evec[(i + 0) % num].y);
-                positionList.Add(evec[(i + 0) % num].z);
-                positionList.Add(startNPolygon[(i + 1) % num].x);
-                positionList.Add(startNPolygon[(i + 1) % num].y);
-                positionList.Add(startNPolygon[(i + 1) % num].z);
-                positionList.Add(evec[(i + 1) % num].x);
-                positionList.Add(evec[(i + 1) % num].y);
-                positionList.Add(evec[(i + 1) % num].z);
+                indexList.Add(parentIndex + a);
+                indexList.Add(parentIndex + b);
+                indexList.Add(baseIndex + b);
+                indexList.Add(parentIndex + a);
+                indexList.Add(baseIndex + b);
+                indexList.Add(baseIndex + a);
             }
 
-            float[] positions = positionList.ToArray();
+            data = vertices.ToArray();
+            indices = indexList.ToArray();
 
-            return (positions, evec);
-        }
-
-        public static unsafe uint StoreDataInAttributeList(uint attributeNumber, int coordinateSize, float[] data, BufferUsage usage = BufferUsage.StaticDraw)
-        {
-            // VBO 생성
-            uint vboID = Gl.GenBuffer();
-
-            // VBO의 데이터를 CPU로부터 GPU에 복사할 때 사용하는 BindBuffer를 다음과 같이 사용
-            Gl.BindBuffer(BufferTarget.ArrayBuffer, vboID);
-            Gl.BufferData(BufferTarget.ArrayBuffer, (uint)(data.Length * sizeof(float)), data, usage);
-
-            // 이전에 BindVertexArray한 VAO에 현재 Bind된 VBO를 attributeNumber 슬롯에 설정
-            Gl.VertexAttribPointer(attributeNumber, coordinateSize, VertexAttribType.Float, false, 0, IntPtr.Zero);
-            //Gl.VertexArrayVertexBuffer(glVertexArrayVertexBuffer, vboID, )
-
-            // GPU 메모리 조작이 필요 없다면 다음과 같이 바인딩 해제
-            Gl.BindBuffer(BufferTarget.ArrayBuffer, 0);
-
-            return vboID;
         }
 
     }

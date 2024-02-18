@@ -6,19 +6,21 @@ namespace LSystem
 {
     public class LSystemUnif
     {
+        static GlobalParam _globalParam;
+
+        public static GlobalParam GlobalParameter => _globalParam;
+
         Dictionary<ProductionNumber, List<Production>> _productions;
         static Random _rnd;
         string _sentence;
-
-        GlobalParam _globalParam;
-
-        public GlobalParam GlobalParameter => _globalParam;
 
         public string Sentence => _sentence;
 
         public static Vertex3f RandomColor3 => new Vertex3f((float)_rnd.NextDouble(), (float)_rnd.NextDouble(), (float)_rnd.NextDouble());
 
         public static Vertex2f RandomVertex2f => new Vertex2f((float)_rnd.NextDouble(), (float)_rnd.NextDouble());
+
+        public static float RandomFloat(float min = 0.0f, float max = 1.0f) => (max - min) * (float)_rnd.NextDouble() + min;
 
         public LSystemUnif(Random random)
         {
@@ -171,40 +173,38 @@ namespace LSystem
                                 }
                             }
                         }
-
-                        // 랜덤사건을 통하여 해당되는 Production을 고른다.
-                        #region
-                        float sum = 0.0f; // 해당 키의 확률의 합을 구한다.
-                        foreach (Production prod in satisfiedProd)
-                            sum += prod.Probability;
-
-                        float incidentProbability = (float)_rnd.NextDouble(); // 사건의 확률을 만든다.
-                        incidentProbability *= sum;
-                        int indexIncident = 0;
-                        sum = 0.0f;
-                        for (int a = 0; a < satisfiedProd.Count; a++)
-                        {
-                            sum += satisfiedProd[a].Probability;
-                            if (incidentProbability < sum)
-                            {
-                                indexIncident = a;
-                                break;
-                            }
-                        }
-                        #endregion
                         
-                        //Console.WriteLine($"{inChar.Alphabet} satisfiedProd Count=" + satisfiedProd.Count + $" sel={indexIncident}");
-
-                        // 치환해야 할 Production을 실행한다. 
-                        foreach (Production prod in satisfiedProd)
+                        if (satisfiedProd.Count > 0)
                         {
-                            nstr[k] = prod.Func(inChar, leftChar, MChar.Null, prod.GlobalParam); // 치환
+                            // 랜덤사건을 통하여 해당되는 Production을 고른다.
+                            #region
+                            float sum = 0.0f; // 해당 키의 확률의 합을 구한다.
+                            foreach (Production prod in satisfiedProd)
+                                sum += prod.Probability;
+
+                            float incidentProbability = sum * (float)_rnd.NextDouble(); // 사건의 확률을 만든다.
+                            int indexIncident = 0;
+                            sum = 0.0f;
+                            for (int a = 0; a < satisfiedProd.Count; a++)
+                            {
+                                sum += satisfiedProd[a].Probability;
+                                if (incidentProbability < sum)
+                                {
+                                    indexIncident = a;
+                                    break;
+                                }
+                            }
+                            #endregion
+
+                            // 치환해야 할 Production을 실행한다. 
+                            Production incidentProd = satisfiedProd[indexIncident];
+                            nstr[k] = incidentProd.Func(inChar, leftChar, MChar.Null, incidentProd.GlobalParam); // 치환
                         }
 
                     }
                 }
 
-                //
+                // 각 문자마다 치환된 문자에 대하여 새로운 문자열을 이어붙인다.
                 MString newString = MString.Null;
                 for (int j = 0; j < nstr.Length; j++)
                 {

@@ -208,7 +208,31 @@ namespace LSystem
 
         public static explicit operator MString(string txt)
         {
+            GlobalParam g = LSystemUnif.GlobalParameter;
             txt = txt.Replace(" ", ""); // 공백을 제거한다.
+
+            int start = 0;
+            string newstr = "";
+            while(start < txt.Length - 1)
+            {
+                if (txt.Substring(start, 1) == "<")
+                {
+                    int b = txt.IndexOf(">", start);
+                    if (start < b) // replace
+                    {
+                        string key = txt.Substring(start + 1, b - start - 1);
+                        float value = g.ContainsKey(key) ? g[key] : 1.0f;
+                        if (!g.ContainsKey(key))
+                            Console.WriteLine($"global parameter {key} don't exits.");
+                        newstr = txt.Substring(0, start) + value + txt.Substring(b + 1);
+                        txt = newstr;
+                        start = b + 1;
+                        continue;
+                    }
+                }
+                start++;
+            }
+
 
             MString str = MString.Null;
             for (int i = 0; i < txt.Length; i++)

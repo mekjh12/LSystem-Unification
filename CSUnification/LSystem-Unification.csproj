@@ -118,6 +118,7 @@
     <Compile Include="Model\Texture.cs" />
     <Compile Include="Model\TexturedModel.cs" />
     <Compile Include="TreeLoader.cs" />
+    <Compile Include="GpuLoader.cs" />
     <EmbeddedResource Include="Form3L.resx">
       <DependentUpon>Form3L.cs</DependentUpon>
     </EmbeddedResource>

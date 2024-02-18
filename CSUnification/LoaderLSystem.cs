@@ -145,17 +145,17 @@ namespace LSystem
             // raw3d 모델을 만든다.
             uint vao = Gl.GenVertexArray();
             Gl.BindVertexArray(vao);
-            uint vbo0 = StoreDataInAttributeList(0, 3, branchList3D.ToArray());
-            uint vbo1 = StoreDataInAttributeList(1, 2, branchList3D.ToArray());
-            uint vbo2 = StoreDataInAttributeList(2, 3, branchColorList.ToArray());
+            uint vbo0 =  GpuLoader.StoreDataInAttributeList(0, 3, branchList3D.ToArray());
+            uint vbo1 = GpuLoader.StoreDataInAttributeList(1, 2, branchList3D.ToArray());
+            uint vbo2 = GpuLoader.StoreDataInAttributeList(2, 3, branchColorList.ToArray());
             Gl.BindVertexArray(0);
-            RawModel3d rawModel = new RawModel3d(vao, branchList3D.ToArray());
+            RawModel3d rawModel = new RawModel3d(vao, branchList3D.ToArray(), 3, 0);
 
             vao = Gl.GenVertexArray();
             Gl.BindVertexArray(vao);
-            vbo0 = StoreDataInAttributeList(0, 3, branchList3DLine.ToArray());
+            vbo0 = GpuLoader.StoreDataInAttributeList(0, 3, branchList3DLine.ToArray());
             Gl.BindVertexArray(0);
-            RawModel3d rawModel2 = new RawModel3d(vao, branchList3DLine.ToArray());
+            RawModel3d rawModel2 = new RawModel3d(vao, branchList3DLine.ToArray(), 3, 0);
 
             return (rawModel, rawModel2);
         }
@@ -267,9 +267,9 @@ namespace LSystem
             // raw3d 모델을 만든다.
             uint vao = Gl.GenVertexArray();
             Gl.BindVertexArray(vao);
-            uint vbo = StoreDataInAttributeList(0, 3, branchList3D.ToArray());
+            uint vbo = GpuLoader.StoreDataInAttributeList(0, 3, branchList3D.ToArray());
             Gl.BindVertexArray(0);
-            RawModel3d rawModel = new RawModel3d(vao, branchList3D.ToArray());
+            RawModel3d rawModel = new RawModel3d(vao, branchList3D.ToArray(), 3, 0);
 
             return (rawModel, null);
         }
@@ -420,15 +420,15 @@ namespace LSystem
             // raw3d 모델을 만든다.
             uint vao = Gl.GenVertexArray();
             Gl.BindVertexArray(vao);
-            uint vbo = StoreDataInAttributeList(0, 3, branchList3D.ToArray());
+            uint vbo = GpuLoader.StoreDataInAttributeList(0, 3, branchList3D.ToArray());
             Gl.BindVertexArray(0);
-            RawModel3d rawModel = new RawModel3d(vao, branchList3D.ToArray());
+            RawModel3d rawModel = new RawModel3d(vao, branchList3D.ToArray(), 3, 0);
 
             vao = Gl.GenVertexArray();
             Gl.BindVertexArray(vao);
-            vbo = StoreDataInAttributeList(0, 3, list.ToArray());
+            vbo = GpuLoader.StoreDataInAttributeList(0, 3, list.ToArray());
             Gl.BindVertexArray(0);
-            RawModel3d rawModelLeaf = new RawModel3d(vao, list.ToArray());
+            RawModel3d rawModelLeaf = new RawModel3d(vao, list.ToArray(), 3, 0);
 
             return (rawModel, rawModelLeaf);
         }
@@ -612,10 +612,10 @@ namespace LSystem
             // raw3d 모델을 만든다.
             uint vao = Gl.GenVertexArray();
             Gl.BindVertexArray(vao);
-            uint vbo = StoreDataInAttributeList(0, 3, branchList3D.ToArray());
-            StoreDataInAttributeList(1, 2, branchTexcoord.ToArray());
+            uint vbo = GpuLoader.StoreDataInAttributeList(0, 3, branchList3D.ToArray());
+            GpuLoader.StoreDataInAttributeList(1, 2, branchTexcoord.ToArray());
             Gl.BindVertexArray(0);
-            RawModel3d rawModel = new RawModel3d(vao, branchList3D.ToArray());
+            RawModel3d rawModel = new RawModel3d(vao, branchList3D.ToArray(), 3, 0);
             return rawModel;
         }
 
@@ -748,10 +748,10 @@ namespace LSystem
             uint vao = Gl.GenVertexArray();
             Gl.BindVertexArray(vao);
             uint vbo;
-            vbo = StoreDataInAttributeList(0, 3, branchList3D.ToArray());
+            vbo = GpuLoader.StoreDataInAttributeList(0, 3, branchList3D.ToArray());
             Gl.BindVertexArray(0);
 
-            RawModel3d rawModel = new RawModel3d(vao, branchList3D.ToArray());
+            RawModel3d rawModel = new RawModel3d(vao, branchList3D.ToArray(), 3, 0);
 
             return rawModel;
         }
@@ -767,7 +767,7 @@ namespace LSystem
         public static (float[], Vertex3f[] endNPolygon) LoadBranch(Vertex3f[] startNPolygon,
             Vertex3f start, Vertex3f end, float ratioThick, bool isRelativesize)
         {
-            List<float> positionList = new List<float>();
+            List<float> vertices = new List<float>();
             int num = startNPolygon.Length;
             Vertex3f[] evec = new Vertex3f[num];
 
@@ -798,52 +798,32 @@ namespace LSystem
                 evec[i] = src + start;
             }
 
-            // 아랫면과 윗면의 점들로 옆면을 만든다.
+            float tuUnit = 1.0f / num;
+
+            // 아랫면
             for (int i = 0; i < num; i++)
             {
-                positionList.Add(startNPolygon[(i + 0) % num].x);
-                positionList.Add(startNPolygon[(i + 0) % num].y);
-                positionList.Add(startNPolygon[(i + 0) % num].z);
-                positionList.Add(startNPolygon[(i + 1) % num].x);
-                positionList.Add(startNPolygon[(i + 1) % num].y);
-                positionList.Add(startNPolygon[(i + 1) % num].z);
-                positionList.Add(evec[(i + 0) % num].x);
-                positionList.Add(evec[(i + 0) % num].y);
-                positionList.Add(evec[(i + 0) % num].z);
-
-                positionList.Add(evec[(i + 0) % num].x);
-                positionList.Add(evec[(i + 0) % num].y);
-                positionList.Add(evec[(i + 0) % num].z);
-                positionList.Add(startNPolygon[(i + 1) % num].x);
-                positionList.Add(startNPolygon[(i + 1) % num].y);
-                positionList.Add(startNPolygon[(i + 1) % num].z);
-                positionList.Add(evec[(i + 1) % num].x);
-                positionList.Add(evec[(i + 1) % num].y);
-                positionList.Add(evec[(i + 1) % num].z);
+                vertices.Add(startNPolygon[i].x);
+                vertices.Add(startNPolygon[i].y);
+                vertices.Add(startNPolygon[i].z);
+                vertices.Add(tuUnit * i);
+                vertices.Add(0.0f);
             }
 
-            float[] positions = positionList.ToArray();
+            //윗면
+            for (int i = 0; i < num; i++)
+            {
+                vertices.Add(evec[i].x);
+                vertices.Add(evec[i].y);
+                vertices.Add(evec[i].z);
+                vertices.Add(tuUnit * i);
+                vertices.Add(1.0f);
+            }
+
+            float[] positions = vertices.ToArray();
            
             return (positions, evec);
         }
 
-        public static unsafe uint StoreDataInAttributeList(uint attributeNumber, int coordinateSize, float[] data, BufferUsage usage = BufferUsage.StaticDraw)
-        {
-            // VBO 생성
-            uint vboID = Gl.GenBuffer();
-
-            // VBO의 데이터를 CPU로부터 GPU에 복사할 때 사용하는 BindBuffer를 다음과 같이 사용
-            Gl.BindBuffer(BufferTarget.ArrayBuffer, vboID);
-            Gl.BufferData(BufferTarget.ArrayBuffer, (uint)(data.Length * sizeof(float)), data, usage);
-
-            // 이전에 BindVertexArray한 VAO에 현재 Bind된 VBO를 attributeNumber 슬롯에 설정
-            Gl.VertexAttribPointer(attributeNumber, coordinateSize, VertexAttribType.Float, false, 0, IntPtr.Zero);
-            //Gl.VertexArrayVertexBuffer(glVertexArrayVertexBuffer, vboID, )
-
-            // GPU 메모리 조작이 필요 없다면 다음과 같이 바인딩 해제
-            Gl.BindBuffer(BufferTarget.ArrayBuffer, 0);
-
-            return vboID;
-        }
     }
 }
