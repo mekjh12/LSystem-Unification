@@ -5,6 +5,8 @@ LSystem을 위한 통합 버전
 * Stochastic Basic LSystem
 * Context-sensitive Basic LSystem
 
+![image](https://github.com/mekjh12/LSystem-Unification/assets/122244587/05c07485-2494-4e52-8a95-e81a5b7b2f2a)
+
 
 # Developmental surface models (p.123)
 
