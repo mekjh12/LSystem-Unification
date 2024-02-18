@@ -7,7 +7,7 @@ LSystem을 위한 통합 버전
 
 ![image](https://github.com/mekjh12/LSystem-Unification/assets/122244587/985ee840-12e4-4289-ac08-e0f221e0400b)
 
-![image](https://github.com/mekjh12/LSystem-Unification/assets/122244587/b128aef0-cdff-44ce-ba26-e0d1bc181153)
+![image](https://github.com/mekjh12/LSystem-Unification/assets/122244587/2b26bda3-56ac-4dc2-babf-ad3d31110160)
 
 # Developmental surface models (p.123)
 
